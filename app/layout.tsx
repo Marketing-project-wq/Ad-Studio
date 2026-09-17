@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'AI-powered ad copy, banner, and campaign tracking tool for the 20FIT digital marketing team.',
   icons: {
-    icon: 'https://media.20fit.id/wp-content/uploads/2026/04/20FITcolor.png',
+    icon: '/logo-color.svg',
   },
 };
 

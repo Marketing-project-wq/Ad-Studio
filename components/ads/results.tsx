@@ -1,7 +1,5 @@
 'use client';
 
-import { useApp } from '@/app/providers';
-import { LOGO_COLOR, LOGO_WHITE } from '@/lib/brand';
 import CopyButton from './CopyButton';
 import type {
   DisplayOutput,
@@ -310,8 +308,6 @@ export function MetaResult({
   data: MetaOutput;
   cta: string;
 }) {
-  const { isDark } = useApp();
-  const logo = isDark ? LOGO_WHITE : LOGO_COLOR;
   return (
     <div>
       <div className="slbl" style={{ fontSize: 14, marginBottom: 12 }}>
@@ -335,9 +331,18 @@ export function MetaResult({
             </div>
             <div className="mp">
               <div className="mh">
-                <div className="mav">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={logo} alt="20FIT" crossOrigin="anonymous" />
+                <div className="mav" aria-label="20FIT">
+                  <span
+                    style={{
+                      color: '#fff',
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 900,
+                      fontSize: 15,
+                      letterSpacing: '-0.5px',
+                    }}
+                  >
+                    20
+                  </span>
                 </div>
                 <div>
                   <div className="mn2">20FIT Indonesia</div>

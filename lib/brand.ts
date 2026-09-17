@@ -1,9 +1,11 @@
 import type { Platform } from './types';
 
-export const LOGO_COLOR =
-  'https://media.20fit.id/wp-content/uploads/2026/04/20FITcolor.png';
-export const LOGO_WHITE =
-  'https://media.20fit.id/wp-content/uploads/2026/05/Copy-of-new-logo-20fit-putih-3.png';
+// Served locally from /public so there is no cross-origin (CORS) request —
+// media.20fit.id blocks cross-origin image loads, which broke the sidebar
+// logo. Swap these SVGs for the real brand PNGs (drop them in /public and
+// point these at /logo-color.png and /logo-white.png) whenever available.
+export const LOGO_COLOR = '/logo-color.svg';
+export const LOGO_WHITE = '/logo-white.svg';
 
 export interface PlatformMeta {
   key: Platform;
