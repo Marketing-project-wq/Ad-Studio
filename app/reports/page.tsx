@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import PageHeader from '@/components/layout/PageHeader';
 import { useApp } from '@/app/providers';
 import PerformanceReport from '@/components/reports/PerformanceReport';
@@ -16,6 +17,12 @@ export default function ReportsPage() {
   return (
     <>
       <PageHeader title={r.title} sub={r.sub} />
+
+      <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 10 }}>
+        <Link href="/reports/settings" className="muted" style={{ fontWeight: 700 }}>
+          ⚙ {r.settingsLink} →
+        </Link>
+      </div>
 
       <div className="sub-nav">
         <button

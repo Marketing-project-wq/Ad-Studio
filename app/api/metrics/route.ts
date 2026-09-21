@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { METRIC_PLATFORMS, type CampaignMetric, type MetricPlatform } from '@/lib/types';
+import {
+  METRIC_PLATFORMS,
+  type CampaignMetric,
+  type MetricPlatform,
+  type MetricSourceTag,
+} from '@/lib/types';
 import { cleanNum, normalizeDate, normalizePlatform } from '@/lib/metrics';
 
 export const dynamic = 'force-dynamic';
 
 const TABLE = 'campaign_metrics';
 const MAX_ROWS_PER_POST = 1000;
+const SOURCE_TAGS = ['manual', 'csv_import', 'google_ads_api', 'meta_api'];
+
+function normSource(v: unknown): MetricSourceTag {
+  const s = String(v ?? 'manual');
+  return (SOURCE_TAGS.includes(s) ? s : 'manual') as MetricSourceTag;
+}
 
 function notConfigured() {
   return NextResponse.json(
@@ -28,6 +39,7 @@ interface RawRow {
   cost?: unknown;
   conversions?: unknown;
   revenue?: unknown;
+  source?: unknown;
 }
 
 /** Sanitize an untrusted row into a DB-insertable shape. */
@@ -45,6 +57,7 @@ function sanitize(raw: RawRow) {
     cost: cleanNum(raw.cost),
     conversions: cleanNum(raw.conversions),
     revenue: cleanNum(raw.revenue),
+    source: normSource(raw.source),
   };
 }
 
@@ -59,6 +72,7 @@ function toMetric(row: Record<string, unknown>): CampaignMetric {
     cost: Number(row.cost) || 0,
     conversions: Number(row.conversions) || 0,
     revenue: Number(row.revenue) || 0,
+    source: normSource(row.source),
     created_at: String(row.created_at ?? ''),
   };
 }

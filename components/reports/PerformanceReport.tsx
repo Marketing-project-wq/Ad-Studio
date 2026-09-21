@@ -24,6 +24,7 @@ import {
   PLATFORM_LABELS,
   type CampaignMetric,
   type MetricPlatform,
+  type MetricSourceTag,
 } from '@/lib/types';
 import { BarList, MiniTrend, downloadCsv } from './Charts';
 
@@ -81,6 +82,19 @@ export default function PerformanceReport() {
   const platLabel = (p: MetricPlatform): string =>
     p === 'other' ? r.platOther : PLATFORM_LABELS[p];
 
+  const sourceLabel = (s: MetricSourceTag): string => {
+    switch (s) {
+      case 'csv_import':
+        return r.srcCsv;
+      case 'google_ads_api':
+        return r.srcGoogle;
+      case 'meta_api':
+        return r.srcMeta;
+      default:
+        return r.srcManual;
+    }
+  };
+
   const filtered = useMemo(() => {
     const cutoff = cutoffFor(period);
     return state.rows.filter((row) => {
@@ -134,7 +148,8 @@ export default function PerformanceReport() {
       toast(r.importEmpty);
       return;
     }
-    const ok = await persist(rows, `${imported} ${r.importedSuffix}${skipped ? ` · ${skipped} ${r.skippedSuffix}` : ''}`);
+    const tagged = rows.map((row) => ({ ...row, source: 'csv_import' as const }));
+    const ok = await persist(tagged, `${imported} ${r.importedSuffix}${skipped ? ` · ${skipped} ${r.skippedSuffix}` : ''}`);
     if (ok) {
       setCsvText('');
       setShowImport(false);
@@ -410,7 +425,16 @@ export default function PerformanceReport() {
                           {platLabel(row.platform)}
                         </span>
                       </td>
-                      <td>{row.campaign || '—'}</td>
+                      <td>
+                        <div>{row.campaign || '—'}</div>
+                        {row.source && row.source !== 'manual' && (
+                          <span
+                            className={`src-tag${row.source.endsWith('_api') ? ' api' : ''}`}
+                          >
+                            {sourceLabel(row.source)}
+                          </span>
+                        )}
+                      </td>
                       <td className="mono" style={{ textAlign: 'right' }}>{formatInt(row.impressions)}</td>
                       <td className="mono" style={{ textAlign: 'right' }}>{formatInt(row.clicks)}</td>
                       <td className="mono" style={{ textAlign: 'right' }}>{formatPct(k.ctr)}</td>
@@ -476,6 +500,7 @@ function formToInput(f: FormState): MetricInput {
     cost: numeric(f.cost),
     conversions: numeric(f.conversions),
     revenue: numeric(f.revenue),
+    source: 'manual',
   };
 }
 function numeric(s: string): number {

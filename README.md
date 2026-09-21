@@ -16,6 +16,7 @@ as crm.20fit.id, with light + dark modes.
 | --- | --- |
 | **Dashboard** | Stat cards, platform grid, recent generations |
 | **Reports** | Two tabs: **Ad Performance** (manual entry + CSV import of impressions/clicks/spend/conversions/revenue → CTR, CPC, CPM, CVR, CPA, ROAS, with trends, platform comparison, CSV export) and **Copy Production** (analytics over generation history) |
+| **API Integrations** | Connect **Google Ads** via OAuth to auto-sync campaign performance into Reports (tokens encrypted at rest, service-role-only). Settings at `/reports/settings`. Meta arrives in a follow-up. |
 | **Google Display Ads** | 3 variations: short/long headlines, descriptions, CTA, image text |
 | **Google Search / SEM** | 3 ad groups: keywords (match + intent), negatives, headlines, descriptions, sitelinks |
 | **Google Performance Max** | 2 asset groups: headlines, long headlines, descriptions, signals, themes, YouTube assets |
@@ -62,6 +63,11 @@ See `.env.example`. Summary:
 | `SUPABASE_SERVICE_ROLE_KEY` | Asset upload API | **Server-only — never expose** |
 | `NEXT_PUBLIC_APP_URL` | Absolute links | e.g. `https://ads.20fit.id` |
 | `AI_RATE_LIMIT_PER_HOUR` | (optional) | Defaults to 20 |
+| `ENCRYPTION_KEY` | Ad platform integrations | **Server-only.** AES-256-GCM key for stored OAuth tokens. `openssl rand -hex 32` |
+| `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` | Google Ads sync | OAuth client (Google Cloud Console, Ads API enabled) |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | (optional) | Optional since the 2026-09-09 dev-token sunset; sent if present |
+| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | (optional) | Manager (MCC) account id, digits only |
+| `GOOGLE_ADS_API_VERSION` | (optional) | Defaults to `v25` |
 
 ---
 
@@ -75,7 +81,12 @@ See `.env.example`. Summary:
    **`campaign_metrics`** table behind the Reports "Ad Performance" tab. When
    present, `/api/metrics` persists performance rows server-side (shared across
    the team); without it the tab falls back to this browser's localStorage.
-4. Copy the project URL + anon key + service-role key into your env.
+4. Run `supabase/migrations/0003_integration_credentials.sql` and
+   `supabase/migrations/0004_campaign_metrics_source_column.sql` to enable the
+   ad-platform integrations (Google Ads sync). `0003` stores OAuth tokens
+   (encrypted, service-role-only); `0004` adds the `source` column — **required**
+   for `/api/metrics` once this code is deployed.
+5. Copy the project URL + anon key + service-role key into your env.
 
 Asset uploads are written by the server route with the service-role key, so the
 shared asset library works immediately. History currently persists in the
@@ -105,14 +116,16 @@ browser (localStorage); the schema is ready for per-user sync once Supabase Auth
 ```
 app/                       # App Router pages + API routes
   page.tsx                 # Dashboard
-  reports/                 # Reports module (Ad Performance + Copy Production)
+  reports/                 # Reports module (+ reports/settings for integrations)
   google/{display,sem,pmax}/  Meta at meta/, plus utm, banner, assets, history, settings
   api/{generate,assets,metrics,health}/
+  api/integrations/{status,google-ads/{auth,callback,sync}}/
 components/{layout,ads,banner,utm,assets,reports}/
 lib/                       # ai.ts, prompts/, utm.ts, history.ts, metrics.ts, report.ts, supabase/, types.ts
+lib/integrations/          # encryption.ts, oauth.ts, store.ts, google-ads.ts, types.ts
 i18n/                      # id.ts, en.ts
 styles → app/globals.css   # 20FIT design tokens + component CSS
-supabase/migrations/       # 0001_init.sql, 0002_campaign_metrics.sql
+supabase/migrations/       # 0001_init … 0004_campaign_metrics_source_column.sql
 ```
 
 See `docs/reporting-evaluation.md` for the analysis of the reporting surface
