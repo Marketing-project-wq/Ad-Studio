@@ -11,7 +11,9 @@
 import type { OAuthTokens, SyncedMetricRow } from './types';
 
 export const META_API_VERSION = process.env.META_GRAPH_VERSION || 'v26.0';
-export const META_SCOPE = 'ads_read,read_insights';
+// ads_read is sufficient for the Ads Insights API. (read_insights is for Page/App
+// insights, not ad accounts, and is deprecated — don't request it.)
+export const META_SCOPE = 'ads_read';
 // Long-lived user tokens last ~60 days; Meta does not issue refresh tokens
 // (a still-valid long-lived token is re-exchanged to extend it).
 const LONG_LIVED_DEFAULT_SECONDS = 60 * 24 * 60 * 60;

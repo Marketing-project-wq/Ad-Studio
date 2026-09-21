@@ -7,14 +7,21 @@ export function makeStateNonce(): string {
   return crypto.randomBytes(16).toString('hex');
 }
 
-/** App base URL — prefer the configured public URL, fall back to the request origin. */
-export function appBaseUrl(origin: string): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || origin).replace(/\/$/, '');
+/**
+ * App base URL from NEXT_PUBLIC_APP_URL only. Returns null when it is not set —
+ * an OAuth redirect URI must exactly match the value registered with the
+ * provider (Google / Meta), so we never fall back to the request origin or
+ * localhost.
+ */
+export function appBaseUrl(): string | null {
+  const url = process.env.NEXT_PUBLIC_APP_URL;
+  return url ? url.replace(/\/$/, '') : null;
 }
 
-/** The redirect URI registered with the OAuth provider for a platform. */
-export function computeRedirectUri(origin: string, platformSlug: string): string {
-  return `${appBaseUrl(origin)}/api/integrations/${platformSlug}/callback`;
+/** The redirect URI registered with the OAuth provider, or null if NEXT_PUBLIC_APP_URL is unset. */
+export function computeRedirectUri(platformSlug: string): string | null {
+  const base = appBaseUrl();
+  return base ? `${base}/api/integrations/${platformSlug}/callback` : null;
 }
 
 export function stateCookieName(platformSlug: string): string {

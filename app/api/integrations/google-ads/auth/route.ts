@@ -21,7 +21,17 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const redirectUri = computeRedirectUri(req.nextUrl.origin, 'google-ads');
+  const redirectUri = computeRedirectUri('google-ads');
+  if (!redirectUri) {
+    return NextResponse.json(
+      {
+        error:
+          'NEXT_PUBLIC_APP_URL belum di-set — OAuth redirect URI tidak bisa dibangun. / NEXT_PUBLIC_APP_URL is not set.',
+        code: 'app_url_missing',
+      },
+      { status: 500 },
+    );
+  }
   const state = makeStateNonce();
   const res = NextResponse.redirect(googleAdsAuthUrl(redirectUri, state));
   res.cookies.set(stateCookieName('google-ads'), state, {

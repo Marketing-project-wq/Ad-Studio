@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 // GET ← Meta redirects here with ?code & ?state after user consent.
 export async function GET(req: NextRequest) {
-  const settingsUrl = `${appBaseUrl(req.nextUrl.origin)}/reports/settings`;
+  const settingsUrl = `${appBaseUrl() ?? req.nextUrl.origin}/reports/settings`;
   const fail = (reason: string) =>
     NextResponse.redirect(`${settingsUrl}?meta=error&reason=${encodeURIComponent(reason)}`);
 
@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const redirectUri = computeRedirectUri(req.nextUrl.origin, 'meta');
+    const redirectUri = computeRedirectUri('meta');
+    if (!redirectUri) return fail('app_url_missing');
     const tokens = await exchangeCodeForToken(code, redirectUri);
 
     // Default to the first ad account; the user can change it in settings.

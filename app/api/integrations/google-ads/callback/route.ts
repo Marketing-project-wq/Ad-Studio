@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 // GET ← Google redirects here with ?code & ?state after user consent.
 export async function GET(req: NextRequest) {
-  const settingsUrl = `${appBaseUrl(req.nextUrl.origin)}/reports/settings`;
+  const settingsUrl = `${appBaseUrl() ?? req.nextUrl.origin}/reports/settings`;
   const fail = (reason: string) =>
     NextResponse.redirect(`${settingsUrl}?google=error&reason=${encodeURIComponent(reason)}`);
 
@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const redirectUri = computeRedirectUri(req.nextUrl.origin, 'google-ads');
+    const redirectUri = computeRedirectUri('google-ads');
+    if (!redirectUri) return fail('app_url_missing');
     const tokens = await exchangeCode(code, redirectUri);
 
     // Best-effort account discovery (non-fatal — can be set via env / reconnect).
