@@ -1301,3 +1301,43 @@ a {
   outline: none;
   border-color: var(--red);
 }
+
+/* Integration settings + data-source tags */
+.int-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin-top: 10px;
+}
+.int-k {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  display: block;
+}
+.int-v {
+  font-size: 13px;
+  color: var(--ink);
+}
+.src-tag {
+  display: inline-block;
+  font-family: var(--font-data);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--glass-strong);
+  color: var(--ink-faint);
+  margin-top: 3px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.src-tag.api {
+  color: var(--green);
+  background: rgba(28, 138, 75, 0.12);
+}
+[data-theme='dark'] .src-tag.api {
+  background: rgba(52, 199, 123, 0.16);
+}

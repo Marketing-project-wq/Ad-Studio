@@ -10,6 +10,7 @@ import type {
   CampaignMetric,
   MetricKpis,
   MetricPlatform,
+  MetricSourceTag,
   MetricTotals,
 } from './types';
 import { METRIC_PLATFORMS } from './types';
@@ -26,6 +27,7 @@ export interface MetricInput {
   cost: number;
   conversions: number;
   revenue: number;
+  source?: MetricSourceTag;
 }
 
 export type MetricSource = 'supabase' | 'local';
@@ -71,6 +73,7 @@ export function toRow(input: MetricInput): CampaignMetric {
     cost: cleanNum(input.cost),
     conversions: cleanNum(input.conversions),
     revenue: cleanNum(input.revenue),
+    source: input.source || 'manual',
     created_at: new Date().toISOString(),
   };
 }

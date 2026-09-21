@@ -179,6 +179,9 @@ export const METRIC_PLATFORMS: MetricPlatform[] = [
   'other',
 ];
 
+// Where a metric row came from.
+export type MetricSourceTag = 'manual' | 'csv_import' | 'google_ads_api' | 'meta_api';
+
 export interface CampaignMetric {
   id: string;
   user_id?: string | null;
@@ -190,6 +193,7 @@ export interface CampaignMetric {
   cost: number; // ad spend, in IDR
   conversions: number;
   revenue: number; // conversion value, in IDR (0 when unknown)
+  source?: MetricSourceTag; // defaults to 'manual' server-side
   created_at: string;
 }
 
