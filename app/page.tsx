@@ -97,7 +97,15 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="section-title">{d.recent}</div>
+      <div
+        className="row"
+        style={{ justifyContent: 'space-between', alignItems: 'baseline' }}
+      >
+        <div className="section-title">{d.recent}</div>
+        <Link href="/reports" className="muted" style={{ fontWeight: 700 }}>
+          {d.viewReports} →
+        </Link>
+      </div>
       <div className="card">
         {gens.length === 0 ? (
           <div className="es">
