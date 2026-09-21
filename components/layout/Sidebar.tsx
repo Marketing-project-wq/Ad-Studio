@@ -11,7 +11,7 @@ interface NavItem {
   dot: string;
 }
 interface NavSection {
-  sectionKey: 'googleAds' | 'meta' | 'tools' | 'library' | null;
+  sectionKey: 'googleAds' | 'meta' | 'tools' | 'library' | 'insights' | null;
   items: NavItem[];
 }
 
@@ -23,6 +23,10 @@ const SECTIONS: NavSection[] = [
   {
     sectionKey: null,
     items: [{ href: '/', labelKey: 'dashboard', dot: 'var(--red)' }],
+  },
+  {
+    sectionKey: 'insights',
+    items: [{ href: '/reports', labelKey: 'reports', dot: 'var(--red)' }],
   },
   {
     sectionKey: 'googleAds',

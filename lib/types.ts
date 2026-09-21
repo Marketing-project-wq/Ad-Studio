@@ -166,6 +166,52 @@ export interface AdAsset {
   created_at: string;
 }
 
+// ---- Campaign performance metrics (reporting) ----
+// A metric row is one platform+campaign's numbers for one day. It can be typed
+// in by hand or imported from a Google Ads / Meta Ads CSV export.
+export type MetricPlatform = Platform | 'other';
+
+export const METRIC_PLATFORMS: MetricPlatform[] = [
+  'google_display',
+  'google_sem',
+  'google_pmax',
+  'meta',
+  'other',
+];
+
+export interface CampaignMetric {
+  id: string;
+  user_id?: string | null;
+  date: string; // yyyy-mm-dd
+  platform: MetricPlatform;
+  campaign: string;
+  impressions: number;
+  clicks: number;
+  cost: number; // ad spend, in IDR
+  conversions: number;
+  revenue: number; // conversion value, in IDR (0 when unknown)
+  created_at: string;
+}
+
+/** The raw numbers of a metric row (or an aggregate of rows). */
+export interface MetricTotals {
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  revenue: number;
+}
+
+/** KPIs derived from MetricTotals. null means "not computable" (divide-by-zero). */
+export interface MetricKpis {
+  ctr: number | null; // clicks / impressions
+  cpc: number | null; // cost / clicks
+  cpm: number | null; // cost / impressions * 1000
+  cvr: number | null; // conversions / clicks
+  cpa: number | null; // cost / conversions
+  roas: number | null; // revenue / cost
+}
+
 export interface ApiError {
   error: string;
   code?: string;

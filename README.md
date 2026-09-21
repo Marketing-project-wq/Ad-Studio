@@ -15,6 +15,7 @@ as crm.20fit.id, with light + dark modes.
 | Module | What it does |
 | --- | --- |
 | **Dashboard** | Stat cards, platform grid, recent generations |
+| **Reports** | Two tabs: **Ad Performance** (manual entry + CSV import of impressions/clicks/spend/conversions/revenue → CTR, CPC, CPM, CVR, CPA, ROAS, with trends, platform comparison, CSV export) and **Copy Production** (analytics over generation history) |
 | **Google Display Ads** | 3 variations: short/long headlines, descriptions, CTA, image text |
 | **Google Search / SEM** | 3 ad groups: keywords (match + intent), negatives, headlines, descriptions, sitelinks |
 | **Google Performance Max** | 2 asset groups: headlines, long headlines, descriptions, signals, themes, YouTube assets |
@@ -70,7 +71,11 @@ See `.env.example`. Summary:
 2. Run `supabase/migrations/0001_init.sql` in the SQL editor. It creates the
    `ad_generations`, `utm_links`, `ad_assets`, `banner_projects` tables with
    RLS, and the public **`ad-assets`** storage bucket + policies.
-3. Copy the project URL + anon key + service-role key into your env.
+3. Run `supabase/migrations/0002_campaign_metrics.sql` to add the
+   **`campaign_metrics`** table behind the Reports "Ad Performance" tab. When
+   present, `/api/metrics` persists performance rows server-side (shared across
+   the team); without it the tab falls back to this browser's localStorage.
+4. Copy the project URL + anon key + service-role key into your env.
 
 Asset uploads are written by the server route with the service-role key, so the
 shared asset library works immediately. History currently persists in the
@@ -100,14 +105,18 @@ browser (localStorage); the schema is ready for per-user sync once Supabase Auth
 ```
 app/                       # App Router pages + API routes
   page.tsx                 # Dashboard
+  reports/                 # Reports module (Ad Performance + Copy Production)
   google/{display,sem,pmax}/  Meta at meta/, plus utm, banner, assets, history, settings
-  api/{generate,assets,health}/
-components/{layout,ads,banner,utm,assets}/
-lib/                       # ai.ts, prompts/, utm.ts, history.ts, supabase/, types.ts
+  api/{generate,assets,metrics,health}/
+components/{layout,ads,banner,utm,assets,reports}/
+lib/                       # ai.ts, prompts/, utm.ts, history.ts, metrics.ts, report.ts, supabase/, types.ts
 i18n/                      # id.ts, en.ts
 styles → app/globals.css   # 20FIT design tokens + component CSS
-supabase/migrations/       # 0001_init.sql
+supabase/migrations/       # 0001_init.sql, 0002_campaign_metrics.sql
 ```
+
+See `docs/reporting-evaluation.md` for the analysis of the reporting surface
+and the prioritized roadmap for enriching it.
 
 Prompt templates live in `lib/prompts/` (one per platform) so copy quality can
 be tuned without touching the UI.
