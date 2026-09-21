@@ -3,16 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/app/providers';
 import {
+  aggregateByCampaign,
+  ctrTone,
   deleteMetric,
   deriveKpis,
-  formatIDR,
-  formatIDROpt,
-  formatInt,
-  formatPct,
-  formatRoas,
+  formatNumber,
   loadMetrics,
   metricsToCsv,
   parseCsv,
+  roasTone,
   saveMetrics,
   sumMetrics,
   type MetricInput,
@@ -26,7 +25,7 @@ import {
   type MetricPlatform,
   type MetricSourceTag,
 } from '@/lib/types';
-import { BarList, MiniTrend, downloadCsv } from './Charts';
+import { BarList, MiniTrend, RankedBars, downloadCsv } from './Charts';
 
 type Period = 'all' | '7' | '30' | 'month';
 
@@ -58,7 +57,7 @@ function emptyForm(): FormState {
 }
 
 export default function PerformanceReport() {
-  const { t, toast } = useApp();
+  const { t, toast, lang } = useApp();
   const r = t.reports;
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +75,7 @@ export default function PerformanceReport() {
     last_synced_at?: string | null;
   } | null>(null);
   const [metaBusy, setMetaBusy] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
     loadMetrics().then((st) => {
@@ -87,7 +87,7 @@ export default function PerformanceReport() {
   // Show a "Meta connected" banner with an inline sync when the integration is on.
   useEffect(() => {
     let active = true;
-    fetch('/api/integrations/status')
+    fetch('/api/integrations/status', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (active && j) setMetaStatus(j.statuses?.meta || null);
@@ -132,6 +132,25 @@ export default function PerformanceReport() {
     value: x.value,
     color: x.platform === 'other' ? 'var(--ink-faint)' : PLATFORM_META[x.platform].dot,
   }));
+
+  // How many platforms actually have spend (decides whether the platform split
+  // chart is worth showing — it isn't when there's only Meta).
+  const platformsWithData = useMemo(
+    () => new Set(filtered.filter((row) => row.cost > 0).map((row) => row.platform)).size,
+    [filtered],
+  );
+  const topCampaigns = useMemo(
+    () => aggregateByCampaign(filtered).sort((a, b) => b.cost - a.cost).slice(0, 5),
+    [filtered],
+  );
+  // Inactive = every metric is 0 (a campaign turned Off in Meta). Hidden by default.
+  const tableRows = useMemo(
+    () =>
+      showInactive
+        ? filtered
+        : filtered.filter((row) => row.impressions > 0 || row.clicks > 0 || row.cost > 0),
+    [filtered, showInactive],
+  );
 
   async function persist(inputs: MetricInput[], okMsg: string) {
     setBusy(true);
@@ -206,7 +225,7 @@ export default function PerformanceReport() {
       if (!res.ok) throw new Error(j?.error || 'Sync failed');
       toast(`${r.metaSync}: +${j.result?.upserted ?? 0}`);
       setState(await loadMetrics());
-      const s2 = await fetch('/api/integrations/status');
+      const s2 = await fetch('/api/integrations/status', { cache: 'no-store' });
       if (s2.ok) setMetaStatus((await s2.json()).statuses?.meta || null);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Error');
@@ -426,14 +445,19 @@ export default function PerformanceReport() {
 
           {/* KPI grid */}
           <div className="kpi-grid perf">
-            <Kpi label={r.kSpend} value={formatIDR(totals.cost)} />
-            <Kpi label={r.kImpr} value={formatInt(totals.impressions)} />
-            <Kpi label={r.kClicks} value={formatInt(totals.clicks)} />
-            <Kpi label={r.kCtr} value={formatPct(kpis.ctr)} />
-            <Kpi label={r.kConv} value={formatInt(totals.conversions)} />
-            <Kpi label={r.kCpa} value={formatIDROpt(kpis.cpa)} />
-            <Kpi label={r.kCpc} value={formatIDROpt(kpis.cpc)} />
-            <Kpi label={r.kRoas} value={formatRoas(kpis.roas)} accent />
+            <Kpi label={r.kSpend} value={formatNumber(totals.cost, 'currency', lang)} />
+            <Kpi label={r.kImpr} value={formatNumber(totals.impressions, 'compact', lang)} />
+            <Kpi label={r.kClicks} value={formatNumber(totals.clicks, 'compact', lang)} />
+            <Kpi label={r.kCtr} value={formatNumber(kpis.ctr, 'percent', lang)} tone={ctrTone(kpis.ctr)} />
+            <Kpi label={r.kConv} value={formatNumber(totals.conversions, 'compact', lang)} />
+            <Kpi label={r.kCpa} value={formatNumber(kpis.cpa, 'currency', lang)} />
+            <Kpi label={r.kCpc} value={formatNumber(kpis.cpc, 'currency', lang)} />
+            <Kpi
+              label={r.kRoas}
+              value={formatNumber(kpis.roas, 'multiplier', lang)}
+              tone={roasTone(kpis.roas)}
+              title={r.roasTooltip}
+            />
           </div>
 
           {/* Charts */}
@@ -448,72 +472,110 @@ export default function PerformanceReport() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="slbl">{r.byPlatform}</div>
-            <BarList items={byPlatform} format={formatIDR} />
+          <div className={platformsWithData >= 2 ? 'report-grid' : ''}>
+            <div className="card">
+              <div className="slbl">{r.topCampaigns}</div>
+              <RankedBars
+                items={topCampaigns.map((c) => {
+                  const roas = c.cost > 0 && c.revenue > 0 ? c.revenue / c.cost : null;
+                  return {
+                    label: c.campaign,
+                    value: c.cost,
+                    badge: `ROAS ${formatNumber(roas, 'multiplier', lang)}`,
+                    badgeTone: roasTone(roas),
+                  };
+                })}
+                format={(n) => formatNumber(n, 'currency', lang)}
+              />
+            </div>
+            {platformsWithData >= 2 && (
+              <div className="card">
+                <div className="slbl">{r.byPlatform}</div>
+                <BarList items={byPlatform} format={(n) => formatNumber(n, 'currency', lang)} />
+              </div>
+            )}
           </div>
 
           {/* Table */}
-          <div className="card" style={{ overflowX: 'auto' }}>
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{r.colDate}</th>
-                  <th>{r.colPlatform}</th>
-                  <th>{r.colCampaign}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colImpr}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colClicks}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colCtr}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colCost}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colConv}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colCpa}</th>
-                  <th style={{ textAlign: 'right' }}>{r.colRoas}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => {
-                  const k = deriveKpis(row);
-                  const meta = row.platform === 'other' ? null : PLATFORM_META[row.platform];
-                  return (
-                    <tr key={row.id}>
-                      <td className="mono">{row.date}</td>
-                      <td>
-                        <span className="plat-tag" style={{ background: 'var(--glass-strong)', color: 'var(--ink)' }}>
-                          <span
-                            className="plat-dot"
-                            style={{ width: 7, height: 7, background: meta ? meta.dot : 'var(--ink-faint)' }}
-                          />
-                          {platLabel(row.platform)}
-                        </span>
-                      </td>
-                      <td>
-                        <div>{row.campaign || '—'}</div>
-                        {row.source && row.source !== 'manual' && (
-                          <span
-                            className={`src-tag${row.source.endsWith('_api') ? ' api' : ''}`}
-                          >
-                            {sourceLabel(row.source)}
+          <div className="report-toolbar" style={{ marginBottom: 8 }}>
+            <label className="chk">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              {r.showInactive}
+            </label>
+            <span className="muted mono">
+              {tableRows.length}/{filtered.length}
+            </span>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            <div className="table-scroll">
+              <table className="tbl tbl-report">
+                <thead>
+                  <tr>
+                    <th>{r.colDate}</th>
+                    <th>{r.colPlatform}</th>
+                    <th>{r.colCampaign}</th>
+                    <th className="ar">{r.colImpr}</th>
+                    <th className="ar">{r.colClicks}</th>
+                    <th className="ar">{r.colCtr}</th>
+                    <th className="ar">{r.colCost}</th>
+                    <th className="ar">{r.colConv}</th>
+                    <th className="ar">{r.colCpa}</th>
+                    <th className="ar">{r.colRoas}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableRows.map((row) => {
+                    const k = deriveKpis(row);
+                    const meta = row.platform === 'other' ? null : PLATFORM_META[row.platform];
+                    const inactive = !(row.impressions > 0 || row.clicks > 0 || row.cost > 0);
+                    return (
+                      <tr key={row.id} className={inactive ? 'row-inactive' : undefined}>
+                        <td className="num">{row.date}</td>
+                        <td>
+                          <span className="plat-tag" style={{ background: 'var(--glass-strong)', color: 'var(--ink)' }}>
+                            <span
+                              className="plat-dot"
+                              style={{ width: 7, height: 7, background: meta ? meta.dot : 'var(--ink-faint)' }}
+                            />
+                            {platLabel(row.platform)}
                           </span>
-                        )}
-                      </td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatInt(row.impressions)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatInt(row.clicks)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatPct(k.ctr)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatIDR(row.cost)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatInt(row.conversions)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatIDROpt(k.cpa)}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatRoas(k.roas)}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="cbtn" onClick={() => onDelete(row.id)} aria-label="delete">
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td>
+                          <div>{row.campaign || '—'}</div>
+                          {row.source && row.source !== 'manual' && (
+                            <span className={`src-tag${row.source.endsWith('_api') ? ' api' : ''}`}>
+                              {sourceLabel(row.source)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="num ar">{formatNumber(row.impressions, 'int', lang)}</td>
+                        <td className="num ar">{formatNumber(row.clicks, 'int', lang)}</td>
+                        <td className="num ar">{formatNumber(k.ctr, 'percent', lang)}</td>
+                        <td className="num ar">{formatNumber(row.cost, 'currency', lang)}</td>
+                        <td className="num ar">{formatNumber(row.conversions, 'int', lang)}</td>
+                        <td className="num ar">{formatNumber(k.cpa, 'currency', lang)}</td>
+                        <td
+                          className={`num ar roas-${roasTone(k.roas)}`}
+                          title={k.roas === null ? r.roasDashTip : undefined}
+                        >
+                          {formatNumber(k.roas, 'multiplier', lang)}
+                        </td>
+                        <td className="ar">
+                          <button className="cbtn" onClick={() => onDelete(row.id)} aria-label="delete">
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -522,13 +584,23 @@ export default function PerformanceReport() {
 }
 
 // ---- small presentational helpers -----------------------------------------
-function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Kpi({
+  label,
+  value,
+  tone,
+  title,
+}: {
+  label: string;
+  value: string;
+  tone?: 'good' | 'warn' | 'bad' | 'neutral';
+  title?: string;
+}) {
   return (
     <div className="kpi-card">
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-value" style={accent ? { color: 'var(--red)' } : undefined}>
-        {value}
+      <div className="kpi-label" title={title}>
+        {label}
       </div>
+      <div className={`kpi-value${tone && tone !== 'neutral' ? ` ${tone}` : ''}`}>{value}</div>
     </div>
   );
 }

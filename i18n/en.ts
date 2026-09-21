@@ -114,6 +114,11 @@ const en: Dictionary = {
     spendTrend: 'Spend per Day',
     convTrend: 'Conversions per Day',
     byPlatform: 'Spend by Platform',
+    topCampaigns: 'Top 5 Campaigns (Spend)',
+    showInactive: 'Show inactive campaigns',
+    roasTooltip:
+      'ROAS = Revenue (from purchases) ÷ Spend. Campaigns without a purchase objective show —',
+    roasDashTip: 'This campaign has no purchase objective (revenue = 0).',
     colDate: 'Date',
     colPlatform: 'Platform',
     colCampaign: 'Campaign',
@@ -178,6 +183,12 @@ const en: Dictionary = {
       'Disconnect Meta Ads? Already-synced data will not be deleted.',
     autoSourceNoteMeta:
       'Synced data appears in the Ad Performance tab tagged "Meta". Re-syncing updates the same rows (manual/CSV rows are untouched).',
+    metaResync: 'Re-sync',
+    metaResyncTip:
+      'Clear all "Meta" rows and refetch from scratch. Use this after a conversion/ROAS mapping change so older data is recomputed.',
+    metaResyncConfirm:
+      'Re-sync will DELETE all "Meta" rows and refetch from scratch. Manual, CSV, and Google data are untouched. Continue?',
+    metaResyncDone: 'Re-sync complete',
   },
   display: {
     title: 'Display Ads',

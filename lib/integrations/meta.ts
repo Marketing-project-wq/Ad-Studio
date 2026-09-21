@@ -161,20 +161,58 @@ export async function fetchAdAccounts(accessToken: string): Promise<MetaAdAccoun
 }
 
 // ---- Insights --------------------------------------------------------------
-// Which `actions`/`action_values` action_types count as a conversion. This is
-// intentionally broad — the right set depends on each campaign's objective, so
-// tune this regex (or make it configurable) if 20FIT standardises on specific
-// conversion events (e.g. only `purchase` or a custom `offsite_conversion.*`).
-const CONVERSION_MATCH =
-  /(purchase|lead|complete_registration|offsite_conversion|onsite_conversion|omni_purchase|subscribe|start_trial|submit_application)/i;
+// === MAPPING KONVERSI 20FIT ===
+// PENTING: action_type mapping ini perlu disesuaikan per bisnis.
+// 20FIT punya 3 tipe campaign:
+//   1. Purchase (Arena/Event tickets, Shop sales)   → konversi DAN punya revenue
+//   2. Lead gen (Shop/WA leads, registrations)       → konversi, TANPA revenue
+//   3. Traffic/awareness (visits, engagement, video) → BUKAN konversi
+// Adjust list ini kalau definisi internal 20FIT berubah.
 
-function sumMatchingActions(list: unknown, matcher: RegExp): number {
+// Tier 1 — Purchase: counted as a conversion AND carries revenue.
+const PURCHASE_ACTION_TYPES = new Set<string>([
+  'offsite_conversion.fb_pixel_purchase',
+  'purchase',
+  'omni_purchase',
+  'onsite_web_purchase',
+]);
+
+// Tier 2 — Lead: counted as a conversion, but WITHOUT revenue.
+const LEAD_ACTION_TYPES = new Set<string>([
+  'offsite_conversion.fb_pixel_lead',
+  'lead',
+  'onsite_conversion.lead_grouped',
+  'complete_registration',
+  'offsite_conversion.fb_pixel_complete_registration',
+  'onsite_conversion.messaging_conversation_started_7d',
+  'onsite_conversion.messaging_first_reply',
+]);
+
+// Everything that counts as a "conversion" (purchase + lead). Explicitly EXCLUDES
+// traffic/engagement/awareness (link_click, landing_page_view, post_engagement,
+// page_engagement, video_view, onsite_conversion.post_save, profile visits, …).
+const CONVERSION_ACTION_TYPES = new Set<string>([
+  ...PURCHASE_ACTION_TYPES,
+  ...LEAD_ACTION_TYPES,
+]);
+
+function sumActionsIn(list: unknown, allowed: Set<string>): number {
   if (!Array.isArray(list)) return 0;
   let total = 0;
   for (const item of list as Array<Record<string, unknown>>) {
-    if (matcher.test(str(item.action_type))) total += num(item.value);
+    if (allowed.has(str(item.action_type).toLowerCase())) total += num(item.value);
   }
   return total;
+}
+
+/** Conversions = purchase + lead action types only (from `actions`). */
+function mapConversions(actions: unknown): number {
+  return sumActionsIn(actions, CONVERSION_ACTION_TYPES);
+}
+
+/** Revenue = value of purchase action types only (from `action_values`). */
+function mapRevenue(actionValues: unknown): number {
+  return sumActionsIn(actionValues, PURCHASE_ACTION_TYPES);
 }
 
 function normalizeAccountId(adAccountId: string): string {
@@ -215,8 +253,8 @@ export async function fetchCampaignInsights(
         impressions: num(row.impressions),
         clicks: num(row.clicks),
         cost: num(row.spend), // account-currency amount (IDR for 20FIT)
-        conversions: sumMatchingActions(row.actions, CONVERSION_MATCH),
-        revenue: sumMatchingActions(row.action_values, CONVERSION_MATCH),
+        conversions: mapConversions(row.actions),
+        revenue: mapRevenue(row.action_values), // purchase value only
         source: 'meta_api',
       });
     }

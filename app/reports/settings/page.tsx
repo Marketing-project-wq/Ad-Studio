@@ -31,7 +31,7 @@ export default function IntegrationsSettingsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/integrations/status');
+      const res = await fetch('/api/integrations/status', { cache: 'no-store' });
       if (res.ok) setData((await res.json()) as StatusResponse);
     } catch {
       /* ignore — demo mode */
@@ -238,6 +238,24 @@ function MetaCard({
     }
   }
 
+  async function resync() {
+    if (!window.confirm(g.metaResyncConfirm)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/integrations/meta/resync?days=${days}`, {
+        method: 'POST',
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || 'Re-sync failed');
+      toast(`${g.metaResyncDone}: −${j.result?.cleared ?? 0} / +${j.result?.upserted ?? 0}`);
+      await onReload();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function disconnect() {
     if (!window.confirm(g.disconnectConfirm)) return;
     setBusy(true);
@@ -328,6 +346,14 @@ function MetaCard({
             </div>
             <button className="btn btn-red btn-sm" onClick={sync} disabled={busy}>
               {busy ? g.syncing : g.sync}
+            </button>
+            <button
+              className="btn btn-glass btn-sm"
+              onClick={resync}
+              disabled={busy}
+              title={g.metaResyncTip}
+            >
+              {g.metaResync}
             </button>
             <button className="btn btn-glass btn-sm" onClick={disconnect} disabled={busy}>
               {g.disconnect}

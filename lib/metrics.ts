@@ -212,7 +212,9 @@ export function deriveKpis(t: MetricTotals): MetricKpis {
     cpm: t.impressions ? (t.cost / t.impressions) * 1000 : null,
     cvr: t.clicks ? t.conversions / t.clicks : null,
     cpa: t.conversions ? t.cost / t.conversions : null,
-    roas: t.cost ? t.revenue / t.cost : null,
+    // ROAS needs real purchase revenue. When revenue is 0 (e.g. a lead/traffic
+    // campaign with no purchase objective) it is not measurable → null → "—".
+    roas: t.cost > 0 && t.revenue > 0 ? t.revenue / t.cost : null,
   };
 }
 
@@ -395,4 +397,101 @@ export function formatIDROpt(n: number | null): string {
 }
 export function formatRoas(n: number | null): string {
   return n === null ? '—' : `${nf2.format(n)}×`;
+}
+
+// ---- unified readable formatting (KPI cards + table) -----------------------
+export type NumberType = 'currency' | 'compact' | 'percent' | 'multiplier' | 'int';
+
+const nfCache = new Map<string, Intl.NumberFormat>();
+function nf(lang: 'id' | 'en', decimals: number): Intl.NumberFormat {
+  const key = `${lang}:${decimals}`;
+  let f = nfCache.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(lang === 'id' ? 'id-ID' : 'en-US', {
+      maximumFractionDigits: decimals,
+    });
+    nfCache.set(key, f);
+  }
+  return f;
+}
+
+/**
+ * One readable formatter for display. Abbreviates only at ≥ 1 million so exact
+ * values below that stay legible.
+ *   currency   → "Rp 20,97 jt" (≥1jt) / "Rp 582"
+ *   compact    → "1,29 jt" (≥1jt) / "24.679"
+ *   percent    → ratio in → "2,34%"
+ *   multiplier → "18,8x"     (null → "—")
+ *   int        → "24.679"
+ */
+export function formatNumber(
+  n: number | null,
+  type: NumberType,
+  lang: 'id' | 'en' = 'id',
+): string {
+  if (n === null || !Number.isFinite(n)) return '—';
+  const jt = lang === 'id' ? ' jt' : 'M'; // juta / million
+  const mlr = lang === 'id' ? ' M' : 'B'; // miliar / billion
+  const abs = Math.abs(n);
+  switch (type) {
+    case 'currency':
+      if (abs >= 1e9) return `Rp ${nf(lang, 2).format(n / 1e9)}${mlr}`;
+      if (abs >= 1e6) return `Rp ${nf(lang, 2).format(n / 1e6)}${jt}`;
+      return `Rp ${nf(lang, 0).format(Math.round(n))}`;
+    case 'compact':
+      if (abs >= 1e9) return `${nf(lang, 2).format(n / 1e9)}${mlr}`;
+      if (abs >= 1e6) return `${nf(lang, 2).format(n / 1e6)}${jt}`;
+      return nf(lang, 0).format(Math.round(n));
+    case 'percent':
+      return `${nf(lang, 2).format(n * 100)}%`;
+    case 'multiplier':
+      return `${nf(lang, 1).format(n)}x`;
+    default:
+      return nf(lang, 0).format(Math.round(n));
+  }
+}
+
+// ---- KPI colour tones ------------------------------------------------------
+// NOTE: these thresholds are general guidance, not absolute standards — adjust
+// them to 20FIT's own targets (they could be made configurable later).
+export type Tone = 'good' | 'warn' | 'bad' | 'neutral';
+
+export function roasTone(roas: number | null): Tone {
+  if (roas === null) return 'neutral';
+  if (roas > 3) return 'good';
+  if (roas >= 1) return 'warn';
+  return 'bad';
+}
+export function ctrTone(ctr: number | null): Tone {
+  if (ctr === null) return 'neutral';
+  if (ctr > 0.02) return 'good';
+  if (ctr >= 0.01) return 'warn';
+  return 'bad';
+}
+export function cvrTone(cvr: number | null): Tone {
+  if (cvr === null) return 'neutral';
+  if (cvr > 0.05) return 'good';
+  if (cvr >= 0.02) return 'warn';
+  return 'bad';
+}
+
+// ---- per-campaign aggregation (Top campaigns) ------------------------------
+export interface CampaignAgg extends MetricTotals {
+  campaign: string;
+}
+export function aggregateByCampaign(rows: CampaignMetric[]): CampaignAgg[] {
+  const map = new Map<string, CampaignAgg>();
+  for (const row of rows) {
+    const key = row.campaign || '—';
+    const cur =
+      map.get(key) ||
+      { campaign: key, impressions: 0, clicks: 0, cost: 0, conversions: 0, revenue: 0 };
+    cur.impressions += row.impressions;
+    cur.clicks += row.clicks;
+    cur.cost += row.cost;
+    cur.conversions += row.conversions;
+    cur.revenue += row.revenue;
+    map.set(key, cur);
+  }
+  return Array.from(map.values());
 }

@@ -113,6 +113,11 @@ const id = {
     spendTrend: 'Spend per Hari',
     convTrend: 'Konversi per Hari',
     byPlatform: 'Spend per Platform',
+    topCampaigns: 'Top 5 Campaign (Spend)',
+    showInactive: 'Tampilkan campaign nonaktif',
+    roasTooltip:
+      'ROAS = Revenue (dari purchase) ÷ Spend. Campaign tanpa objective purchase menampilkan —',
+    roasDashTip: 'Campaign ini tidak punya objective purchase (revenue = 0).',
     colDate: 'Tanggal',
     colPlatform: 'Platform',
     colCampaign: 'Campaign',
@@ -177,6 +182,12 @@ const id = {
       'Putuskan koneksi Meta Ads? Data yang sudah tersimpan tidak akan terhapus.',
     autoSourceNoteMeta:
       'Data hasil sync muncul di tab Performa Iklan dengan sumber "Meta". Sync ulang memperbarui baris yang sama (data manual/CSV tidak tersentuh).',
+    metaResync: 'Re-sync',
+    metaResyncTip:
+      'Bersihkan semua baris sumber "Meta" lalu tarik ulang dari awal. Pakai ini setelah perubahan mapping konversi/ROAS agar data lama ikut dihitung ulang.',
+    metaResyncConfirm:
+      'Re-sync akan MENGHAPUS semua data sumber "Meta" lalu menariknya ulang dari awal. Data manual, CSV, dan Google tidak tersentuh. Lanjutkan?',
+    metaResyncDone: 'Re-sync selesai',
   },
   display: {
     title: 'Display Ads',

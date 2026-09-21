@@ -102,6 +102,55 @@ export function MiniTrend({
   );
 }
 
+export interface RankedItem {
+  label: string;
+  value: number;
+  badge?: string;
+  badgeTone?: 'good' | 'warn' | 'bad' | 'neutral';
+}
+
+/** Ranked horizontal bars with an optional per-row badge (e.g. a ROAS chip). */
+export function RankedBars({
+  items,
+  format,
+  empty = 'No data',
+}: {
+  items: RankedItem[];
+  format?: (n: number) => string;
+  empty?: string;
+}) {
+  const max = Math.max(1, ...items.map((i) => i.value));
+  if (items.length === 0) return <div className="muted">{empty}</div>;
+  return (
+    <div className="ranked">
+      {items.map((it, i) => (
+        <div className="ranked-row" key={it.label}>
+          <div className="ranked-rank">{i + 1}</div>
+          <div className="ranked-main">
+            <div className="ranked-head">
+              <span className="ranked-label" title={it.label}>
+                {it.label}
+              </span>
+              {it.badge && (
+                <span className={`ranked-badge ${it.badgeTone || 'neutral'}`}>
+                  {it.badge}
+                </span>
+              )}
+            </div>
+            <div className="ranked-track">
+              <div
+                className="ranked-fill"
+                style={{ width: `${Math.max(3, (it.value / max) * 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className="ranked-val">{format ? format(it.value) : it.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Trigger a client-side CSV download. */
 export function downloadCsv(filename: string, csv: string): void {
   try {

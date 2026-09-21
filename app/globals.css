@@ -1358,3 +1358,197 @@ a {
 [data-theme='dark'] .meta-banner {
   background: rgba(77, 168, 255, 0.1);
 }
+
+/* ===== KPI value tone (threshold colouring) ============================== */
+.kpi-value.good {
+  color: var(--green);
+}
+.kpi-value.warn {
+  color: var(--amber);
+}
+.kpi-value.bad {
+  color: var(--red);
+}
+
+/* ===== Inline checkbox toggle =========================================== */
+.chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+}
+.chk input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+/* ===== Ranked bars (Top campaigns by spend) ============================= */
+.ranked {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ranked-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.ranked-rank {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 15px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.ranked-main {
+  min-width: 0;
+}
+.ranked-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.ranked-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ranked-badge {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex: none;
+}
+.ranked-badge.good {
+  color: var(--green);
+  background: rgba(28, 138, 75, 0.12);
+}
+.ranked-badge.warn {
+  color: var(--amber);
+  background: rgba(199, 122, 0, 0.12);
+}
+.ranked-badge.bad {
+  color: var(--red);
+  background: rgba(228, 0, 43, 0.1);
+}
+.ranked-badge.neutral {
+  color: var(--ink-faint);
+  background: var(--glass-strong);
+}
+[data-theme='dark'] .ranked-badge.good {
+  background: rgba(52, 199, 123, 0.16);
+}
+[data-theme='dark'] .ranked-badge.warn {
+  background: rgba(255, 180, 84, 0.16);
+}
+[data-theme='dark'] .ranked-badge.bad {
+  background: rgba(255, 59, 87, 0.16);
+}
+.ranked-track {
+  background: var(--glass-strong);
+  border-radius: 99px;
+  height: 9px;
+  overflow: hidden;
+}
+.ranked-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--red);
+  transition: width 0.3s ease;
+}
+.ranked-val {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* ===== Readable report table =========================================== */
+/* Scroll container with a sticky header so column labels stay visible. */
+.table-scroll {
+  max-height: 560px;
+  overflow: auto;
+  border-radius: var(--radius);
+}
+.tbl-report {
+  font-size: 14px;
+}
+.tbl-report thead th {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* Stronger than the faint default so headers read clearly (contrast ≥ #333). */
+  color: var(--ink);
+  background: #eceef1;
+  border-bottom: 1px solid var(--border-strong);
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+[data-theme='dark'] .tbl-report thead th {
+  background: #17181b;
+}
+.tbl-report tbody td {
+  font-size: 14px;
+  color: var(--ink);
+  padding: 9px 10px;
+}
+.tbl-report .num {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.tbl-report .ar {
+  text-align: right;
+}
+.tbl-report tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.022);
+}
+[data-theme='dark'] .tbl-report tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.03);
+}
+.tbl-report tbody tr:hover td {
+  background: rgba(0, 104, 201, 0.06);
+}
+[data-theme='dark'] .tbl-report tbody tr:hover td {
+  background: rgba(77, 168, 255, 0.1);
+}
+.tbl-report tr.row-inactive td {
+  opacity: 0.5;
+}
+/* ROAS cell tone — matches the KPI thresholds. */
+.tbl-report .roas-good {
+  color: var(--green);
+  font-weight: 700;
+}
+.tbl-report .roas-warn {
+  color: var(--amber);
+  font-weight: 700;
+}
+.tbl-report .roas-bad {
+  color: var(--red);
+  font-weight: 700;
+}
+.tbl-report .roas-neutral {
+  color: var(--ink-faint);
+}

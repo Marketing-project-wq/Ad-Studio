@@ -214,3 +214,13 @@ export async function upsertSyncedMetrics(
   if (error) throw new Error(error.message);
   return { upserted: rows.length };
 }
+
+/** Remove all rows previously synced from a given API source (for a clean re-sync). */
+export async function clearSyncedMetrics(
+  source: 'google_ads_api' | 'meta_api',
+): Promise<number> {
+  const supabase = getSupabaseServer();
+  if (!supabase) return 0;
+  const { data } = await supabase.from(METRICS).delete().eq('source', source).select('id');
+  return data?.length || 0;
+}

@@ -33,5 +33,10 @@ export async function GET() {
     supabase: isSupabaseServerConfigured(),
     encryption: isEncryptionConfigured(),
   };
-  return NextResponse.json({ statuses, prereqs });
+  // Never let the browser serve a stale status (e.g. "last sync: never" right
+  // after a successful sync).
+  return NextResponse.json(
+    { statuses, prereqs },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
