@@ -255,22 +255,6 @@ export async function fetchCampaignInsights(
       const conversions = mapConversions(row.actions);
       const revenue = mapRevenue(row.action_values); // purchase action_values only
 
-      // TEMPORARY diagnostic logging (visible in Railway logs). Lets us confirm
-      // exactly which action_type leaks revenue into non-purchase campaigns.
-      // Remove once the mapping is verified against Meta Ads Manager.
-      console.log(`[Meta Sync] Campaign: ${campaign}, Date: ${date}`);
-      console.log(`[Meta Sync] Actions:`, JSON.stringify(row.actions ?? null));
-      console.log(`[Meta Sync] Action Values:`, JSON.stringify(row.action_values ?? null));
-      console.log(`[Meta Sync] Mapped conversions: ${conversions}, revenue: ${revenue}`);
-
-      // Safety net: a lead campaign must never carry purchase revenue. If it does,
-      // the mapping is still catching a cross-attributed action_value.
-      if (revenue > 0 && /lead/i.test(campaign)) {
-        console.warn(
-          `[Meta Sync WARNING] Lead campaign "${campaign}" has revenue ${revenue} — possible cross-attribution`,
-        );
-      }
-
       rows.push({
         date,
         platform: 'meta',
