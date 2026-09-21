@@ -71,12 +71,31 @@ export default function PerformanceReport() {
   const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [csvText, setCsvText] = useState('');
+  const [metaStatus, setMetaStatus] = useState<{
+    connected: boolean;
+    last_synced_at?: string | null;
+  } | null>(null);
+  const [metaBusy, setMetaBusy] = useState(false);
 
   useEffect(() => {
     loadMetrics().then((st) => {
       setState(st);
       setLoading(false);
     });
+  }, []);
+
+  // Show a "Meta connected" banner with an inline sync when the integration is on.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/integrations/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (active && j) setMetaStatus(j.statuses?.meta || null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const platLabel = (p: MetricPlatform): string =>
@@ -118,7 +137,12 @@ export default function PerformanceReport() {
     setBusy(true);
     try {
       const created = await saveMetrics(state.source, inputs);
-      setState((s) => ({ ...s, rows: [...created, ...s.rows] }));
+      // Merge by id so an upsert that updated an existing row moves it to the
+      // top rather than appearing twice.
+      setState((s) => {
+        const ids = new Set(created.map((c) => c.id));
+        return { ...s, rows: [...created, ...s.rows.filter((x) => !ids.has(x.id))] };
+      });
       toast(okMsg);
       return true;
     } catch (e) {
@@ -174,6 +198,23 @@ export default function PerformanceReport() {
     setState((s) => ({ ...s, rows: s.rows.filter((x) => x.id !== id) }));
   }
 
+  async function syncMeta() {
+    setMetaBusy(true);
+    try {
+      const res = await fetch('/api/integrations/meta/sync?days=30', { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || 'Sync failed');
+      toast(`${r.metaSync}: +${j.result?.upserted ?? 0}`);
+      setState(await loadMetrics());
+      const s2 = await fetch('/api/integrations/status');
+      if (s2.ok) setMetaStatus((await s2.json()).statuses?.meta || null);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setMetaBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="card">
@@ -189,6 +230,27 @@ export default function PerformanceReport() {
 
   return (
     <>
+      {metaStatus?.connected && (
+        <div className="meta-banner">
+          <span>
+            <span
+              className="plat-dot"
+              style={{ width: 8, height: 8, background: 'var(--blue)', display: 'inline-block' }}
+            />{' '}
+            <strong>{r.metaBanner}</strong> ·{' '}
+            <span className="mono">
+              {r.metaLastSync}:{' '}
+              {metaStatus.last_synced_at
+                ? new Date(metaStatus.last_synced_at).toLocaleString('en-GB')
+                : r.metaNever}
+            </span>
+          </span>
+          <button className="btn btn-glass btn-sm" onClick={syncMeta} disabled={metaBusy}>
+            {metaBusy ? r.metaSyncing : r.metaSync}
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="report-toolbar">
         <span

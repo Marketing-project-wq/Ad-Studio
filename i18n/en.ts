@@ -129,6 +129,11 @@ const en: Dictionary = {
     srcCsv: 'CSV',
     srcGoogle: 'Google Ads',
     srcMeta: 'Meta',
+    metaBanner: 'Meta Ads connected',
+    metaLastSync: 'Last sync',
+    metaNever: 'never',
+    metaSync: 'Sync',
+    metaSyncing: 'Syncing...',
   },
   integrations: {
     title: 'API Integrations',
@@ -161,7 +166,18 @@ const en: Dictionary = {
     disconnected: 'Disconnected.',
     errorToast: 'Failed',
     autoSourceNote:
-      'Synced data appears in the Ad Performance tab tagged "Google Ads". Re-syncing overwrites API data for the same range (manual/CSV rows are untouched).',
+      'Synced data appears in the Ad Performance tab tagged "Google Ads". Re-syncing updates the same rows (manual/CSV rows are untouched).',
+    metaConnectedToast: 'Meta Ads connected.',
+    connectMeta: 'Connect Meta Ads',
+    needMetaEnv:
+      'Set META_APP_ID and META_APP_SECRET to enable the Meta Ads connection.',
+    tokenExpiry: 'Token Expiry',
+    adAccount: 'Ad Account',
+    days60: 'Last 60 days',
+    disconnectConfirm:
+      'Disconnect Meta Ads? Already-synced data will not be deleted.',
+    autoSourceNoteMeta:
+      'Synced data appears in the Ad Performance tab tagged "Meta". Re-syncing updates the same rows (manual/CSV rows are untouched).',
   },
   display: {
     title: 'Display Ads',

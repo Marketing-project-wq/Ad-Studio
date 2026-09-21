@@ -16,7 +16,7 @@ as crm.20fit.id, with light + dark modes.
 | --- | --- |
 | **Dashboard** | Stat cards, platform grid, recent generations |
 | **Reports** | Two tabs: **Ad Performance** (manual entry + CSV import of impressions/clicks/spend/conversions/revenue → CTR, CPC, CPM, CVR, CPA, ROAS, with trends, platform comparison, CSV export) and **Copy Production** (analytics over generation history) |
-| **API Integrations** | Connect **Google Ads** via OAuth to auto-sync campaign performance into Reports (tokens encrypted at rest, service-role-only). Settings at `/reports/settings`. Meta arrives in a follow-up. |
+| **API Integrations** | Connect **Google Ads** and **Meta Ads** via OAuth to auto-sync campaign performance into Reports (tokens encrypted at rest, service-role-only; idempotent upsert by `platform+campaign+date+source`). Settings at `/reports/settings`. |
 | **Google Display Ads** | 3 variations: short/long headlines, descriptions, CTA, image text |
 | **Google Search / SEM** | 3 ad groups: keywords (match + intent), negatives, headlines, descriptions, sitelinks |
 | **Google Performance Max** | 2 asset groups: headlines, long headlines, descriptions, signals, themes, YouTube assets |
@@ -68,6 +68,8 @@ See `.env.example`. Summary:
 | `GOOGLE_ADS_DEVELOPER_TOKEN` | (optional) | Optional since the 2026-09-09 dev-token sunset; sent if present |
 | `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | (optional) | Manager (MCC) account id, digits only |
 | `GOOGLE_ADS_API_VERSION` | (optional) | Defaults to `v25` |
+| `META_APP_ID` / `META_APP_SECRET` | Meta Ads sync | App from developers.facebook.com (Marketing API). App ID is non-secret |
+| `META_GRAPH_VERSION` | (optional) | Defaults to `v26.0` |
 
 ---
 
@@ -81,11 +83,12 @@ See `.env.example`. Summary:
    **`campaign_metrics`** table behind the Reports "Ad Performance" tab. When
    present, `/api/metrics` persists performance rows server-side (shared across
    the team); without it the tab falls back to this browser's localStorage.
-4. Run `supabase/migrations/0003_integration_credentials.sql` and
-   `supabase/migrations/0004_campaign_metrics_source_column.sql` to enable the
-   ad-platform integrations (Google Ads sync). `0003` stores OAuth tokens
-   (encrypted, service-role-only); `0004` adds the `source` column — **required**
-   for `/api/metrics` once this code is deployed.
+4. Run `0003_integration_credentials.sql`, `0004_campaign_metrics_source_column.sql`,
+   and `0005_campaign_metrics_unique.sql` to enable the ad-platform integrations
+   (Google Ads + Meta). `0003` stores OAuth tokens (encrypted, service-role-only);
+   `0004` adds the `source` column; `0005` adds the `(platform, campaign, date,
+   source)` unique key so syncs and re-imports upsert. **Required** for
+   `/api/metrics` once this code is deployed.
 5. Copy the project URL + anon key + service-role key into your env.
 
 Asset uploads are written by the server route with the service-role key, so the
@@ -119,13 +122,13 @@ app/                       # App Router pages + API routes
   reports/                 # Reports module (+ reports/settings for integrations)
   google/{display,sem,pmax}/  Meta at meta/, plus utm, banner, assets, history, settings
   api/{generate,assets,metrics,health}/
-  api/integrations/{status,google-ads/{auth,callback,sync}}/
+  api/integrations/{status,google-ads/{auth,callback,sync},meta/{auth,callback,sync,accounts,disconnect}}/
 components/{layout,ads,banner,utm,assets,reports}/
 lib/                       # ai.ts, prompts/, utm.ts, history.ts, metrics.ts, report.ts, supabase/, types.ts
-lib/integrations/          # encryption.ts, oauth.ts, store.ts, google-ads.ts, types.ts
+lib/integrations/          # encryption.ts, oauth.ts, store.ts, google-ads.ts, meta.ts, types.ts
 i18n/                      # id.ts, en.ts
 styles → app/globals.css   # 20FIT design tokens + component CSS
-supabase/migrations/       # 0001_init … 0004_campaign_metrics_source_column.sql
+supabase/migrations/       # 0001_init … 0005_campaign_metrics_unique.sql
 ```
 
 See `docs/reporting-evaluation.md` for the analysis of the reporting surface

@@ -128,6 +128,11 @@ const id = {
     srcCsv: 'CSV',
     srcGoogle: 'Google Ads',
     srcMeta: 'Meta',
+    metaBanner: 'Meta Ads terhubung',
+    metaLastSync: 'Terakhir sync',
+    metaNever: 'belum pernah',
+    metaSync: 'Sync',
+    metaSyncing: 'Sync...',
   },
   integrations: {
     title: 'Integrasi API',
@@ -160,7 +165,18 @@ const id = {
     disconnected: 'Koneksi diputus.',
     errorToast: 'Gagal',
     autoSourceNote:
-      'Data hasil sync muncul di tab Performa Iklan dengan sumber "Google Ads". Sync ulang menimpa data API pada rentang yang sama (data manual/CSV tidak tersentuh).',
+      'Data hasil sync muncul di tab Performa Iklan dengan sumber "Google Ads". Sync ulang memperbarui baris yang sama (data manual/CSV tidak tersentuh).',
+    metaConnectedToast: 'Meta Ads terhubung.',
+    connectMeta: 'Hubungkan Meta Ads',
+    needMetaEnv:
+      'Set META_APP_ID dan META_APP_SECRET untuk mengaktifkan koneksi Meta Ads.',
+    tokenExpiry: 'Token Kedaluwarsa',
+    adAccount: 'Ad Account',
+    days60: '60 hari terakhir',
+    disconnectConfirm:
+      'Putuskan koneksi Meta Ads? Data yang sudah tersimpan tidak akan terhapus.',
+    autoSourceNoteMeta:
+      'Data hasil sync muncul di tab Performa Iklan dengan sumber "Meta". Sync ulang memperbarui baris yang sama (data manual/CSV tidak tersentuh).',
   },
   display: {
     title: 'Display Ads',

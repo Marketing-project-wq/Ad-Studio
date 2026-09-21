@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  fetchCampaignMetrics,
-  isGoogleAdsConfigured,
-  refreshAccessToken,
-} from '@/lib/integrations/google-ads';
+  fetchCampaignInsights,
+  isMetaConfigured,
+  refreshLongLivedToken,
+} from '@/lib/integrations/meta';
 import {
-  deleteCredentials,
   getCredentials,
-  getFreshAccessToken,
+  getFreshMetaToken,
   markError,
   markSynced,
   upsertSyncedMetrics,
@@ -25,20 +24,26 @@ const clampDays = (n: number) =>
 
 function notConfigured() {
   return NextResponse.json(
-    { error: 'Google Ads belum dikonfigurasi. / Not configured.', code: 'not_configured' },
+    { error: 'Meta belum dikonfigurasi. / Not configured.', code: 'not_configured' },
     { status: 503 },
   );
 }
 
-// POST → pull campaign performance for the last `?days=` (default 30) and
-// upsert it into campaign_metrics (idempotent: replaces prior API rows).
+// POST → pull campaign insights for the last `?days=` (default 30) and upsert
+// them into campaign_metrics (source='meta_api').
 export async function POST(req: NextRequest) {
-  if (!isGoogleAdsConfigured()) return notConfigured();
+  if (!isMetaConfigured()) return notConfigured();
 
-  const cred = await getCredentials('google_ads');
+  const cred = await getCredentials('meta');
   if (!cred) {
     return NextResponse.json(
       { error: 'Belum terhubung. / Not connected.', code: 'not_connected' },
+      { status: 400 },
+    );
+  }
+  if (!cred.account_id) {
+    return NextResponse.json(
+      { error: 'Pilih ad account dulu. / Select an ad account first.', code: 'no_account' },
       { status: 400 },
     );
   }
@@ -48,43 +53,28 @@ export async function POST(req: NextRequest) {
   const from = daysAgoStr(days - 1);
 
   try {
-    const fresh = await getFreshAccessToken('google_ads', refreshAccessToken);
+    const fresh = await getFreshMetaToken(refreshLongLivedToken);
     if (!fresh) {
       return NextResponse.json(
         { error: 'Belum terhubung. / Not connected.', code: 'not_connected' },
         { status: 400 },
       );
     }
-    const accountId =
-      cred.account_id ||
-      (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/[^0-9]/g, '');
-    if (!accountId) {
-      throw new Error(
-        'Tidak ada Google Ads account id. Set GOOGLE_ADS_LOGIN_CUSTOMER_ID atau hubungkan ulang. / Missing account id.',
-      );
-    }
-
-    const rows = await fetchCampaignMetrics(fresh.accessToken, accountId, from, to);
+    const rows = await fetchCampaignInsights(fresh.accessToken, cred.account_id, from, to);
     const { upserted } = await upsertSyncedMetrics(rows);
-    await markSynced('google_ads');
+    await markSynced('meta');
 
     const result: SyncResult = {
-      platform: 'google_ads',
+      platform: 'meta',
       upserted,
       from,
       to,
-      account_id: accountId,
+      account_id: cred.account_id,
     };
     return NextResponse.json({ result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'sync_failed';
-    await markError('google_ads', msg);
+    await markError('meta', msg);
     return NextResponse.json({ error: msg, code: 'sync_failed' }, { status: 502 });
   }
-}
-
-// DELETE → disconnect (remove stored credentials).
-export async function DELETE() {
-  await deleteCredentials('google_ads');
-  return NextResponse.json({ ok: true });
 }
