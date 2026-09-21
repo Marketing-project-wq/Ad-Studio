@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/app/providers';
 import {
   aggregateByCampaign,
+  campaignEfficiency,
+  computeInsights,
   ctrTone,
   deleteMetric,
   deriveKpis,
@@ -13,9 +15,12 @@ import {
   parseCsv,
   roasTone,
   saveMetrics,
+  sortMetrics,
   sumMetrics,
   type MetricInput,
   type MetricsState,
+  type SortDir,
+  type SortKey,
 } from '@/lib/metrics';
 import { PLATFORM_META } from '@/lib/brand';
 import {
@@ -25,7 +30,7 @@ import {
   type MetricPlatform,
   type MetricSourceTag,
 } from '@/lib/types';
-import { BarList, MiniTrend, RankedBars, downloadCsv } from './Charts';
+import { BarList, MiniTrend, RankedBars, ScatterPlot, downloadCsv } from './Charts';
 
 type Period = 'all' | '7' | '30' | 'month';
 
@@ -76,6 +81,7 @@ export default function PerformanceReport() {
   } | null>(null);
   const [metaBusy, setMetaBusy] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  const [sort, setSort] = useState<{ col: SortKey; dir: SortDir } | null>(null);
 
   useEffect(() => {
     loadMetrics().then((st) => {
@@ -143,14 +149,32 @@ export default function PerformanceReport() {
     () => aggregateByCampaign(filtered).sort((a, b) => b.cost - a.cost).slice(0, 5),
     [filtered],
   );
+  const insights = useMemo(() => computeInsights(filtered), [filtered]);
+  const efficiency = useMemo(() => campaignEfficiency(filtered), [filtered]);
   // Inactive = every metric is 0 (a campaign turned Off in Meta). Hidden by default.
-  const tableRows = useMemo(
+  const visibleRows = useMemo(
     () =>
       showInactive
         ? filtered
         : filtered.filter((row) => row.impressions > 0 || row.clicks > 0 || row.cost > 0),
     [filtered, showInactive],
   );
+  // Default order is newest-first; a header click sorts client-side.
+  const sortedRows = useMemo(
+    () =>
+      sort
+        ? sortMetrics(visibleRows, sort.col, sort.dir)
+        : sortMetrics(visibleRows, 'date', 'desc'),
+    [visibleRows, sort],
+  );
+
+  function toggleSort(col: SortKey) {
+    setSort((cur) => {
+      if (!cur || cur.col !== col) return { col, dir: 'asc' };
+      if (cur.dir === 'asc') return { col, dir: 'desc' };
+      return null; // third click → reset to default (date desc)
+    });
+  }
 
   async function persist(inputs: MetricInput[], okMsg: string) {
     setBusy(true);
@@ -460,6 +484,64 @@ export default function PerformanceReport() {
             />
           </div>
 
+          {/* Ringkasan / auto insights */}
+          <div className="slbl" style={{ marginBottom: 8 }}>
+            {r.insightsTitle}
+          </div>
+          <div className="insights-grid">
+            <InsightCard
+              icon="🏆"
+              label={r.bestCampaign}
+              value={insights.best ? insights.best.campaign : r.notEnoughData}
+              sub={
+                insights.best
+                  ? `ROAS ${formatNumber(insights.best.roas, 'multiplier', lang)}`
+                  : undefined
+              }
+              tone={insights.best ? 'good' : 'neutral'}
+            />
+            <InsightCard
+              icon="⚠️"
+              label={r.worstCampaign}
+              value={insights.worst ? insights.worst.campaign : r.notEnoughData}
+              sub={
+                insights.worst
+                  ? 'noConv' in insights.worst
+                    ? r.zeroConv
+                    : `ROAS ${formatNumber(insights.worst.roas, 'multiplier', lang)}`
+                  : undefined
+              }
+              tone={insights.worst ? 'bad' : 'neutral'}
+            />
+            <InsightCard
+              icon="📈"
+              label={r.bestDay}
+              value={insights.bestDay ? insights.bestDay.date : r.notEnoughData}
+              sub={
+                insights.bestDay
+                  ? `${formatNumber(insights.bestDay.conversions, 'int', lang)} ${r.conversionsShort}`
+                  : undefined
+              }
+            />
+            <InsightCard
+              icon="🔍"
+              label={r.spendAnomaly}
+              value={
+                !insights.hasData
+                  ? r.notEnoughData
+                  : insights.anomaly
+                    ? insights.anomaly.date
+                    : r.noAnomaly
+              }
+              sub={
+                insights.hasData && insights.anomaly
+                  ? `${formatNumber(insights.anomaly.spend, 'currency', lang)} (${formatNumber(insights.anomaly.ratio, 'multiplier', lang)} ${r.ofAverage})`
+                  : undefined
+              }
+              tone={!insights.hasData ? 'neutral' : insights.anomaly ? 'bad' : 'good'}
+            />
+          </div>
+
           {/* Charts */}
           <div className="report-grid">
             <div className="card">
@@ -496,6 +578,29 @@ export default function PerformanceReport() {
             )}
           </div>
 
+          {/* Campaign efficiency scatter */}
+          <div className="card">
+            <div className="slbl">{r.efficiencyTitle}</div>
+            <ScatterPlot
+              points={efficiency}
+              lang={lang}
+              labels={{
+                x: r.scatterX,
+                y: r.scatterY,
+                breakEven: r.breakEven,
+                quadScaleUp: r.quadScaleUp,
+                quadPotential: r.quadPotential,
+                quadOptimize: r.quadOptimize,
+                quadReview: r.quadReview,
+                spend: r.kSpend,
+                revenue: r.colRevenue,
+                roas: r.kRoas,
+                conversions: r.kConv,
+              }}
+              empty={r.perfEmpty}
+            />
+          </div>
+
           {/* Table */}
           <div className="report-toolbar" style={{ marginBottom: 8 }}>
             <label className="chk">
@@ -507,7 +612,7 @@ export default function PerformanceReport() {
               {r.showInactive}
             </label>
             <span className="muted mono">
-              {tableRows.length}/{filtered.length}
+              {visibleRows.length}/{filtered.length}
             </span>
           </div>
           <div className="card" style={{ padding: 0 }}>
@@ -515,22 +620,22 @@ export default function PerformanceReport() {
               <table className="tbl tbl-report">
                 <thead>
                   <tr>
-                    <th>{r.colDate}</th>
+                    <SortTh col="date" label={r.colDate} sort={sort} onSort={toggleSort} />
                     <th>{r.colPlatform}</th>
-                    <th>{r.colCampaign}</th>
-                    <th className="ar">{r.colImpr}</th>
-                    <th className="ar">{r.colClicks}</th>
-                    <th className="ar">{r.colCtr}</th>
-                    <th className="ar">{r.colCost}</th>
-                    <th className="ar">{r.colConv}</th>
-                    <th className="ar">{r.colCpa}</th>
-                    <th className="ar">{r.colRevenue}</th>
-                    <th className="ar">{r.colRoas}</th>
+                    <SortTh col="campaign" label={r.colCampaign} sort={sort} onSort={toggleSort} />
+                    <SortTh col="impressions" label={r.colImpr} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="clicks" label={r.colClicks} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="ctr" label={r.colCtr} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="cost" label={r.colCost} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="conversions" label={r.colConv} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="cpa" label={r.colCpa} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="revenue" label={r.colRevenue} ar sort={sort} onSort={toggleSort} />
+                    <SortTh col="roas" label={r.colRoas} ar sort={sort} onSort={toggleSort} />
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.map((row) => {
+                  {sortedRows.map((row) => {
                     const k = deriveKpis(row);
                     const meta = row.platform === 'other' ? null : PLATFORM_META[row.platform];
                     const inactive = !(row.impressions > 0 || row.clicks > 0 || row.cost > 0);
@@ -604,6 +709,67 @@ function Kpi({
       </div>
       <div className={`kpi-value${tone && tone !== 'neutral' ? ` ${tone}` : ''}`}>{value}</div>
     </div>
+  );
+}
+
+function InsightCard({
+  icon,
+  label,
+  value,
+  sub,
+  tone = 'neutral',
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: 'good' | 'warn' | 'bad' | 'neutral';
+}) {
+  // When there's a sub-line the tone colours it; otherwise it colours the value
+  // (so "no anomaly" reads green and a placeholder stays neutral).
+  const toneCls = tone !== 'neutral' ? ` ${tone}` : '';
+  return (
+    <div className="insight-card">
+      <div className="insight-top">
+        <span className="insight-ico" aria-hidden>
+          {icon}
+        </span>
+        <span className="insight-label">{label}</span>
+      </div>
+      <div className={`insight-value${sub ? '' : toneCls}`} title={value}>
+        {value}
+      </div>
+      {sub && <div className={`insight-sub${toneCls}`}>{sub}</div>}
+    </div>
+  );
+}
+
+function SortTh({
+  col,
+  label,
+  ar,
+  sort,
+  onSort,
+}: {
+  col: SortKey;
+  label: string;
+  ar?: boolean;
+  sort: { col: SortKey; dir: SortDir } | null;
+  onSort: (c: SortKey) => void;
+}) {
+  const active = sort?.col === col;
+  const indicator = active ? (sort!.dir === 'asc' ? '▲' : '▼') : '▲▼';
+  return (
+    <th
+      className={`th-sort${ar ? ' ar' : ''}${active ? ' act' : ''}`}
+      onClick={() => onSort(col)}
+      aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <span className="th-sort-inner">
+        {label}
+        <span className="sort-ind">{indicator}</span>
+      </span>
+    </th>
   );
 }
 

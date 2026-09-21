@@ -3,6 +3,10 @@
 // Lightweight, dependency-free charts built on inline SVG / flex bars so the
 // reporting module adds no bundle weight and inherits the glass design tokens.
 
+import { useState } from 'react';
+import { formatNumber } from '@/lib/metrics';
+import type { Lang } from '@/lib/types';
+
 export interface ChartItem {
   label: string;
   value: number;
@@ -147,6 +151,226 @@ export function RankedBars({
           <div className="ranked-val">{format ? format(it.value) : it.value}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ---- Scatter plot: campaign efficiency (spend × ROAS) ----------------------
+export interface ScatterDatum {
+  campaign: string;
+  spend: number;
+  revenue: number;
+  roas: number | null; // null = no purchase revenue → plotted on the floor, grey
+  conversions: number;
+}
+
+export interface ScatterLabels {
+  x: string;
+  y: string;
+  breakEven: string;
+  quadScaleUp: string;
+  quadPotential: string;
+  quadOptimize: string;
+  quadReview: string;
+  spend: string;
+  revenue: string;
+  roas: string;
+  conversions: string;
+}
+
+/** Round an axis maximum up to a tick-friendly value, returning max + step. */
+function niceScale(max: number, ticks = 4): { max: number; step: number } {
+  if (!(max > 0)) return { max: ticks, step: 1 };
+  const rawStep = max / ticks;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+  const step = niceNorm * mag;
+  return { max: step * ticks, step };
+}
+
+function trimNum(n: number): string {
+  return (Math.round(n * 10) / 10).toString();
+}
+
+/** Compact currency for axis ticks: id → rb/jt/M, en → k/M/B. */
+function axisMoney(n: number, lang: Lang): string {
+  const [k, m, b] = lang === 'id' ? [' rb', ' jt', ' M'] : ['k', 'M', 'B'];
+  if (n >= 1e9) return `${trimNum(n / 1e9)}${b}`;
+  if (n >= 1e6) return `${trimNum(n / 1e6)}${m}`;
+  if (n >= 1e3) return `${trimNum(n / 1e3)}${k}`;
+  return `${Math.round(n)}`;
+}
+
+function roasBand(roas: number | null): 'good' | 'warn' | 'bad' | 'neutral' {
+  if (roas === null) return 'neutral';
+  if (roas > 3) return 'good';
+  if (roas >= 1) return 'warn';
+  return 'bad';
+}
+const BAND_COLOR: Record<string, string> = {
+  good: 'var(--green)',
+  warn: 'var(--amber)',
+  bad: 'var(--red)',
+  neutral: 'var(--ink-faint)',
+};
+
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+export function ScatterPlot({
+  points,
+  labels,
+  lang,
+  empty = 'No data',
+}: {
+  points: ScatterDatum[];
+  labels: ScatterLabels;
+  lang: Lang;
+  empty?: string;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  if (points.length === 0) return <div className="muted">{empty}</div>;
+
+  const W = 700;
+  const H = 400;
+  const padL = 60;
+  const padR = 20;
+  const padT = 18;
+  const padB = 46;
+  const x0 = padL;
+  const x1 = W - padR;
+  const y0 = padT;
+  const y1 = H - padB;
+  const plotW = x1 - x0;
+  const plotH = y1 - y0;
+
+  const maxSpend = Math.max(...points.map((p) => p.spend));
+  const roasVals = points.map((p) => p.roas).filter((v): v is number => v !== null);
+  const maxRoas = roasVals.length ? Math.max(...roasVals) : 0;
+  const maxConv = Math.max(1, ...points.map((p) => p.conversions));
+
+  const xs = niceScale(maxSpend, 4);
+  const ys = niceScale(Math.max(maxRoas, 1.2), 4); // always show the break-even line
+
+  const sx = (spend: number) => x0 + (spend / xs.max) * plotW;
+  const sy = (roas: number) => y1 - (roas / ys.max) * plotH;
+  const radius = (conv: number) => 6 + Math.sqrt(conv / maxConv) * 18; // 6…24, area ~ conv
+
+  const xTicks = Array.from({ length: 5 }, (_, i) => i * xs.step);
+  const yTicks = Array.from({ length: 5 }, (_, i) => i * ys.step);
+  const medianX = sx(median(points.map((p) => p.spend)));
+  const beY = sy(1); // break-even
+  const hoverPt = hover !== null ? points[hover] : null;
+
+  return (
+    <div className="scatter-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" role="img" aria-label={labels.y}>
+        {/* horizontal gridlines + Y ticks */}
+        {yTicks.map((v) => (
+          <g key={`y${v}`}>
+            <line x1={x0} y1={sy(v)} x2={x1} y2={sy(v)} className="sc-grid" />
+            <text x={x0 - 8} y={sy(v) + 3} textAnchor="end" className="sc-tick">
+              {trimNum(v)}x
+            </text>
+          </g>
+        ))}
+        {/* X ticks */}
+        {xTicks.map((v) => (
+          <text key={`x${v}`} x={sx(v)} y={y1 + 16} textAnchor="middle" className="sc-tick">
+            {axisMoney(v, lang)}
+          </text>
+        ))}
+        {/* axes */}
+        <line x1={x0} y1={y0} x2={x0} y2={y1} className="sc-axis" />
+        <line x1={x0} y1={y1} x2={x1} y2={y1} className="sc-axis" />
+
+        {/* median-spend divider + quadrant hints */}
+        <line x1={medianX} y1={y0} x2={medianX} y2={y1} className="sc-ref" />
+        <text x={x0 + 6} y={y0 + 13} className="sc-quad">
+          {labels.quadPotential}
+        </text>
+        <text x={x1 - 6} y={y0 + 13} textAnchor="end" className="sc-quad">
+          {labels.quadScaleUp}
+        </text>
+        <text x={x0 + 6} y={y1 - 7} className="sc-quad">
+          {labels.quadReview}
+        </text>
+        <text x={x1 - 6} y={y1 - 7} textAnchor="end" className="sc-quad">
+          {labels.quadOptimize}
+        </text>
+
+        {/* break-even line at ROAS = 1 */}
+        <line x1={x0} y1={beY} x2={x1} y2={beY} className="sc-breakeven" />
+        <text x={x1 - 4} y={beY - 5} textAnchor="end" className="sc-be-label">
+          {labels.breakEven}
+        </text>
+
+        {/* dots */}
+        {points.map((p, i) => {
+          const band = roasBand(p.roas);
+          return (
+            <circle
+              key={p.campaign}
+              cx={sx(p.spend)}
+              cy={sy(p.roas ?? 0)}
+              r={radius(p.conversions)}
+              fill={BAND_COLOR[band]}
+              className={`sc-dot${hover === i ? ' on' : ''}`}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover((h) => (h === i ? null : h))}
+            >
+              <title>{`${p.campaign} — ${labels.roas} ${formatNumber(p.roas, 'multiplier', lang)}`}</title>
+            </circle>
+          );
+        })}
+
+        {/* axis titles */}
+        <text x={(x0 + x1) / 2} y={H - 6} textAnchor="middle" className="sc-axis-title">
+          {labels.x}
+        </text>
+        <text
+          x={14}
+          y={(y0 + y1) / 2}
+          textAnchor="middle"
+          transform={`rotate(-90 14 ${(y0 + y1) / 2})`}
+          className="sc-axis-title"
+        >
+          {labels.y}
+        </text>
+      </svg>
+
+      {hoverPt && (
+        <div
+          className="scatter-tip"
+          style={{
+            left: `${(sx(hoverPt.spend) / W) * 100}%`,
+            top: `${(sy(hoverPt.roas ?? 0) / H) * 100}%`,
+          }}
+        >
+          <div className="scatter-tip-title">{hoverPt.campaign}</div>
+          <div className="scatter-tip-row">
+            <span>{labels.spend}</span>
+            <span>{formatNumber(hoverPt.spend, 'currency', lang)}</span>
+          </div>
+          <div className="scatter-tip-row">
+            <span>{labels.revenue}</span>
+            <span>{formatNumber(hoverPt.revenue, 'currency', lang)}</span>
+          </div>
+          <div className="scatter-tip-row">
+            <span>{labels.roas}</span>
+            <span>{formatNumber(hoverPt.roas, 'multiplier', lang)}</span>
+          </div>
+          <div className="scatter-tip-row">
+            <span>{labels.conversions}</span>
+            <span>{formatNumber(hoverPt.conversions, 'int', lang)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

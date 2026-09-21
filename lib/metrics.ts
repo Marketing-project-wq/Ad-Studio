@@ -495,3 +495,160 @@ export function aggregateByCampaign(rows: CampaignMetric[]): CampaignAgg[] {
   }
   return Array.from(map.values());
 }
+
+/** ROAS from an aggregate — null (not measurable) when there is no purchase revenue. */
+export function roasOf(t: MetricTotals): number | null {
+  return t.cost > 0 && t.revenue > 0 ? t.revenue / t.cost : null;
+}
+
+// ---- table sorting ---------------------------------------------------------
+export type SortKey =
+  | 'date'
+  | 'campaign'
+  | 'impressions'
+  | 'clicks'
+  | 'ctr'
+  | 'cost'
+  | 'conversions'
+  | 'cpa'
+  | 'revenue'
+  | 'roas';
+export type SortDir = 'asc' | 'desc';
+
+/** The comparable value for a column. Strings for text, numbers for metrics,
+ *  and null for "not measurable" (CTR/CPA/ROAS with a zero denominator). */
+export function metricSortValue(row: CampaignMetric, key: SortKey): string | number | null {
+  switch (key) {
+    case 'date':
+      return row.date; // ISO yyyy-mm-dd sorts lexicographically
+    case 'campaign':
+      return (row.campaign || '').toLowerCase();
+    case 'ctr':
+      return row.impressions ? row.clicks / row.impressions : null;
+    case 'cpa':
+      return row.conversions ? row.cost / row.conversions : null;
+    case 'roas':
+      return roasOf(row);
+    default:
+      return row[key];
+  }
+}
+
+/** Stable-ish client-side sort. null always sinks to the bottom, regardless of
+ *  direction (so an unmeasurable ROAS never ranks as if it were 0). */
+export function sortMetrics(
+  rows: CampaignMetric[],
+  key: SortKey,
+  dir: SortDir,
+): CampaignMetric[] {
+  const mul = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = metricSortValue(a, key);
+    const vb = metricSortValue(b, key);
+    const na = va === null;
+    const nb = vb === null;
+    if (na && nb) return 0;
+    if (na) return 1;
+    if (nb) return -1;
+    if (typeof va === 'string' || typeof vb === 'string') {
+      return String(va).localeCompare(String(vb)) * mul;
+    }
+    return ((va as number) - (vb as number)) * mul;
+  });
+}
+
+// ---- auto insights (the "Ringkasan" cards) ---------------------------------
+export interface InsightSummary {
+  hasData: boolean;
+  /** Highest ROAS among campaigns that spent enough to be meaningful. */
+  best: { campaign: string; roas: number } | null;
+  /** Lowest ROAS, or (when nothing has revenue) the biggest spender with 0 conversions. */
+  worst: { campaign: string; roas: number } | { campaign: string; noConv: true } | null;
+  /** Day with the most conversions. */
+  bestDay: { date: string; conversions: number } | null;
+  /** A day whose spend exceeds 2× the daily average, if any. */
+  anomaly: { date: string; spend: number; ratio: number } | null;
+}
+
+const MIN_RELEVANT_SPEND = 100000; // Rp — below this a ROAS is too noisy to rank
+
+export function computeInsights(rows: CampaignMetric[]): InsightSummary {
+  if (rows.length === 0) {
+    return { hasData: false, best: null, worst: null, bestDay: null, anomaly: null };
+  }
+  const camps = aggregateByCampaign(rows).map((c) => ({ ...c, roas: roasOf(c) }));
+
+  // Best: highest ROAS among campaigns that spent > Rp100k.
+  let best: InsightSummary['best'] = null;
+  for (const c of camps) {
+    if (c.cost > MIN_RELEVANT_SPEND && c.roas !== null && (!best || c.roas > best.roas)) {
+      best = { campaign: c.campaign, roas: c.roas };
+    }
+  }
+
+  // Worst: lowest ROAS among campaigns that actually earned revenue; otherwise
+  // the biggest spender with zero conversions.
+  let worst: InsightSummary['worst'] = null;
+  const withRoas = camps.filter((c) => c.roas !== null);
+  if (withRoas.length > 0) {
+    const w = withRoas.reduce((m, c) => (c.roas! < m.roas! ? c : m));
+    worst = { campaign: w.campaign, roas: w.roas! };
+  } else {
+    const zeroConv = camps.filter((c) => c.cost > 0 && c.conversions === 0);
+    if (zeroConv.length > 0) {
+      const w = zeroConv.reduce((m, c) => (c.cost > m.cost ? c : m));
+      worst = { campaign: w.campaign, noConv: true };
+    }
+  }
+
+  // Best day (max conversions) and spend anomaly (> 2× daily average).
+  const convByDate = new Map<string, number>();
+  const spendByDate = new Map<string, number>();
+  for (const r of rows) {
+    convByDate.set(r.date, (convByDate.get(r.date) || 0) + r.conversions);
+    spendByDate.set(r.date, (spendByDate.get(r.date) || 0) + r.cost);
+  }
+  let bestDay: InsightSummary['bestDay'] = null;
+  for (const [date, conversions] of convByDate) {
+    if (!bestDay || conversions > bestDay.conversions) bestDay = { date, conversions };
+  }
+  let anomaly: InsightSummary['anomaly'] = null;
+  const spendDays = Array.from(spendByDate.entries());
+  if (spendDays.length > 1) {
+    const total = spendDays.reduce((s, [, v]) => s + v, 0);
+    const avg = total / spendDays.length;
+    if (avg > 0) {
+      let top: { date: string; spend: number } | null = null;
+      for (const [date, spend] of spendDays) {
+        if (!top || spend > top.spend) top = { date, spend };
+      }
+      if (top && top.spend > 2 * avg) {
+        anomaly = { date: top.date, spend: top.spend, ratio: top.spend / avg };
+      }
+    }
+  }
+
+  return { hasData: true, best, worst, bestDay, anomaly };
+}
+
+// ---- campaign efficiency (scatter plot) ------------------------------------
+export interface CampaignEfficiency {
+  campaign: string;
+  spend: number;
+  revenue: number;
+  roas: number | null;
+  conversions: number;
+}
+
+/** One point per campaign that spent money — for the spend-vs-ROAS scatter. */
+export function campaignEfficiency(rows: CampaignMetric[]): CampaignEfficiency[] {
+  return aggregateByCampaign(rows)
+    .filter((c) => c.cost > 0)
+    .map((c) => ({
+      campaign: c.campaign,
+      spend: c.cost,
+      revenue: c.revenue,
+      roas: roasOf(c),
+      conversions: c.conversions,
+    }));
+}
