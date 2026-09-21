@@ -128,6 +128,7 @@ const en: Dictionary = {
     colCost: 'Cost',
     colConv: 'Conv',
     colCpa: 'CPA',
+    colRevenue: 'Revenue',
     colRoas: 'ROAS',
     settingsLink: 'API Integrations',
     srcManual: 'Manual',

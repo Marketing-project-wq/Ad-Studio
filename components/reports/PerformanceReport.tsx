@@ -524,6 +524,7 @@ export default function PerformanceReport() {
                     <th className="ar">{r.colCost}</th>
                     <th className="ar">{r.colConv}</th>
                     <th className="ar">{r.colCpa}</th>
+                    <th className="ar">{r.colRevenue}</th>
                     <th className="ar">{r.colRoas}</th>
                     <th />
                   </tr>
@@ -559,6 +560,7 @@ export default function PerformanceReport() {
                         <td className="num ar">{formatNumber(row.cost, 'currency', lang)}</td>
                         <td className="num ar">{formatNumber(row.conversions, 'int', lang)}</td>
                         <td className="num ar">{formatNumber(k.cpa, 'currency', lang)}</td>
+                        <td className="num ar">{formatNumber(row.revenue, 'currency', lang)}</td>
                         <td
                           className={`num ar roas-${roasTone(k.roas)}`}
                           title={k.roas === null ? r.roasDashTip : undefined}

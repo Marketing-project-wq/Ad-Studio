@@ -170,11 +170,15 @@ export async function fetchAdAccounts(accessToken: string): Promise<MetaAdAccoun
 // Adjust list ini kalau definisi internal 20FIT berubah.
 
 // Tier 1 — Purchase: counted as a conversion AND carries revenue.
+// STRICT allowlist: only the website pixel purchase and the plain `purchase`
+// action. `omni_purchase` and `onsite_web_purchase` are deliberately EXCLUDED —
+// omni_* aggregates cross-channel/cross-campaign attribution and leaks phantom
+// revenue into lead/traffic campaigns (e.g. a leads campaign showing ROAS 141x).
+// If a real purchase campaign under-reports after this, confirm its action_type
+// via the diagnostic logs below before widening this set.
 const PURCHASE_ACTION_TYPES = new Set<string>([
   'offsite_conversion.fb_pixel_purchase',
   'purchase',
-  'omni_purchase',
-  'onsite_web_purchase',
 ]);
 
 // Tier 2 — Lead: counted as a conversion, but WITHOUT revenue.
@@ -246,15 +250,36 @@ export async function fetchCampaignInsights(
     const json = await graphGet(url);
     const data = (json.data as Array<Record<string, unknown>>) || [];
     for (const row of data) {
+      const campaign = str(row.campaign_name) || '—';
+      const date = str(row.date_start) || from;
+      const conversions = mapConversions(row.actions);
+      const revenue = mapRevenue(row.action_values); // purchase action_values only
+
+      // TEMPORARY diagnostic logging (visible in Railway logs). Lets us confirm
+      // exactly which action_type leaks revenue into non-purchase campaigns.
+      // Remove once the mapping is verified against Meta Ads Manager.
+      console.log(`[Meta Sync] Campaign: ${campaign}, Date: ${date}`);
+      console.log(`[Meta Sync] Actions:`, JSON.stringify(row.actions ?? null));
+      console.log(`[Meta Sync] Action Values:`, JSON.stringify(row.action_values ?? null));
+      console.log(`[Meta Sync] Mapped conversions: ${conversions}, revenue: ${revenue}`);
+
+      // Safety net: a lead campaign must never carry purchase revenue. If it does,
+      // the mapping is still catching a cross-attributed action_value.
+      if (revenue > 0 && /lead/i.test(campaign)) {
+        console.warn(
+          `[Meta Sync WARNING] Lead campaign "${campaign}" has revenue ${revenue} — possible cross-attribution`,
+        );
+      }
+
       rows.push({
-        date: str(row.date_start) || from,
+        date,
         platform: 'meta',
-        campaign: str(row.campaign_name) || '—',
+        campaign,
         impressions: num(row.impressions),
         clicks: num(row.clicks),
         cost: num(row.spend), // account-currency amount (IDR for 20FIT)
-        conversions: mapConversions(row.actions),
-        revenue: mapRevenue(row.action_values), // purchase value only
+        conversions,
+        revenue,
         source: 'meta_api',
       });
     }

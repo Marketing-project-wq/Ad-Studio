@@ -127,6 +127,7 @@ const id = {
     colCost: 'Biaya',
     colConv: 'Konv',
     colCpa: 'CPA',
+    colRevenue: 'Revenue',
     colRoas: 'ROAS',
     settingsLink: 'Integrasi API',
     srcManual: 'Manual',
