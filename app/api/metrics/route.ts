@@ -125,7 +125,12 @@ export async function POST(req: NextRequest) {
   }
 
   const clean = inputRows.map(sanitize);
-  const { data, error } = await supabase.from(TABLE).insert(clean).select('*');
+  // Upsert on the (platform, campaign, date, source) key so re-imports and
+  // repeat manual entries update in place instead of duplicating (migration 0005).
+  const { data, error } = await supabase
+    .from(TABLE)
+    .upsert(clean, { onConflict: 'platform,campaign,date,source' })
+    .select('*');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Newest first, matching the client's optimistic prepend.

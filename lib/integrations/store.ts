@@ -114,8 +114,23 @@ export function toStatus(
     status: row.status,
     error_message: row.error_message,
     last_synced_at: row.last_synced_at,
+    token_expiry: row.token_expiry,
     scope: row.scope,
   };
+}
+
+/** Change the selected ad account for a connected platform. */
+export async function updateSelectedAccount(
+  platform: IntegrationPlatform,
+  accountId: string,
+  accountName: string,
+): Promise<void> {
+  const supabase = getSupabaseServer();
+  if (!supabase) return;
+  await supabase
+    .from(TABLE)
+    .update({ account_id: accountId, account_name: accountName })
+    .eq('platform', platform);
 }
 
 /**
@@ -144,32 +159,45 @@ export async function getFreshAccessToken(
 }
 
 /**
- * Idempotent write of API-synced rows: delete any previously-synced rows of
- * this `source` within [from, to], then insert the fresh set. Manual and
- * CSV-imported rows (other sources) are never touched.
+ * Meta has no refresh token — a still-valid long-lived token is re-exchanged to
+ * extend it. Re-extends when within 7 days of expiry, otherwise returns the
+ * stored token as-is. A failed re-extend is non-fatal (the sync then surfaces a
+ * clear "reconnect" error).
  */
-export async function replaceSyncedMetrics(
-  source: 'google_ads_api' | 'meta_api',
-  from: string,
-  to: string,
+export async function getFreshMetaToken(
+  refresher: (accessToken: string) => Promise<OAuthTokens>,
+): Promise<{ accessToken: string; row: CredentialRow } | null> {
+  const row = await getCredentials('meta');
+  if (!row) return null;
+  const accessToken = decryptSecret(row.access_token);
+  const now = Date.now();
+  const expiry = row.token_expiry ? new Date(row.token_expiry).getTime() : 0;
+  const nearExpiry = expiry > 0 && expiry - now < 7 * 86400000;
+  if (!nearExpiry) return { accessToken, row };
+  try {
+    const refreshed = await refresher(accessToken);
+    const tokenExpiry = expiryFromNow(refreshed.expires_in);
+    await updateAccessToken('meta', refreshed.access_token, tokenExpiry);
+    return { accessToken: refreshed.access_token, row: { ...row, token_expiry: tokenExpiry } };
+  } catch {
+    return { accessToken, row };
+  }
+}
+
+/**
+ * Idempotent write of API-synced rows via UPSERT on the
+ * (platform, campaign, date, source) unique key (migration 0005). Re-syncing
+ * updates existing rows in place; `source` is part of the key, so manual and
+ * csv_import rows are never overwritten by an API sync.
+ */
+export async function upsertSyncedMetrics(
   rows: SyncedMetricRow[],
-): Promise<{ imported: number; deleted: number }> {
+): Promise<{ upserted: number }> {
   const supabase = getSupabaseServer();
   if (!supabase) throw new Error('Supabase not configured');
+  if (rows.length === 0) return { upserted: 0 };
 
-  const { data: del, error: delErr } = await supabase
-    .from(METRICS)
-    .delete()
-    .eq('source', source)
-    .gte('date', from)
-    .lte('date', to)
-    .select('id');
-  if (delErr) throw new Error(delErr.message);
-  const deleted = del?.length || 0;
-
-  if (rows.length === 0) return { imported: 0, deleted };
-
-  const { error: insErr } = await supabase.from(METRICS).insert(
+  const { error } = await supabase.from(METRICS).upsert(
     rows.map((r) => ({
       date: r.date,
       platform: r.platform,
@@ -181,7 +209,8 @@ export async function replaceSyncedMetrics(
       revenue: r.revenue,
       source: r.source,
     })),
+    { onConflict: 'platform,campaign,date,source' },
   );
-  if (insErr) throw new Error(insErr.message);
-  return { imported: rows.length, deleted };
+  if (error) throw new Error(error.message);
+  return { upserted: rows.length };
 }

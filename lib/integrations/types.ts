@@ -13,6 +13,7 @@ export interface IntegrationStatus {
   status?: 'connected' | 'error' | 'disconnected';
   error_message?: string | null;
   last_synced_at?: string | null;
+  token_expiry?: string | null;
   scope?: string | null;
 }
 
@@ -27,8 +28,7 @@ export interface OAuthTokens {
 /** Result summary returned by a sync run. */
 export interface SyncResult {
   platform: IntegrationPlatform;
-  imported: number;
-  deleted: number;
+  upserted: number;
   from: string; // yyyy-mm-dd
   to: string; // yyyy-mm-dd
   account_id?: string | null;
