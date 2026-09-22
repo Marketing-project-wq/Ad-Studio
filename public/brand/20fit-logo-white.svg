@@ -1,5 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 164 58" width="164" height="58" role="img" aria-label="20FIT">
-  <text x="2" y="45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-weight="800" font-size="52" fill="#FFFFFF">2</text>
-  <circle cx="55" cy="26" r="18.5" fill="#E4002B" />
-  <text x="79" y="45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-weight="800" font-size="52" fill="#FFFFFF">FIT</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 191.5 58.0" width="191.5" height="58.0" role="img" aria-label="20FIT">
+  <path transform="translate(4.00 50.00) scale(0.02981 -0.02981)" d="M71 0V195Q126 316 227.5 431.0Q329 546 483 671Q631 791 690.5 869.0Q750 947 750 1022Q750 1206 565 1206Q475 1206 427.5 1157.5Q380 1109 366 1012L83 1028Q107 1224 229.5 1327.0Q352 1430 563 1430Q791 1430 913.0 1326.0Q1035 1222 1035 1034Q1035 935 996.0 855.0Q957 775 896.0 707.5Q835 640 760.5 581.0Q686 522 616.0 466.0Q546 410 488.5 353.0Q431 296 403 231H1057V0Z" fill="#FFFFFF"/>
+  <circle cx="65.95" cy="29.00" r="21.00" fill="#E4002B"/>
+  <path transform="translate(93.95 50.00) scale(0.02981 -0.02981)" d="M432 1181V745H1153V517H432V0H137V1409H1176V1181Z" fill="#FFFFFF"/>
+  <path transform="translate(131.24 50.00) scale(0.02981 -0.02981)" d="M137 0V1409H432V0Z" fill="#FFFFFF"/>
+  <path transform="translate(148.20 50.00) scale(0.02981 -0.02981)" d="M773 1181V0H478V1181H23V1409H1229V1181Z" fill="#FFFFFF"/>
 </svg>
