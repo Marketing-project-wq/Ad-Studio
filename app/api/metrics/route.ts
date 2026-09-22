@@ -73,6 +73,7 @@ function toMetric(row: Record<string, unknown>): CampaignMetric {
     conversions: Number(row.conversions) || 0,
     revenue: Number(row.revenue) || 0,
     source: normSource(row.source),
+    objective: row.objective ? String(row.objective) : null,
     created_at: String(row.created_at ?? ''),
   };
 }

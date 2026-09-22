@@ -219,10 +219,47 @@ function mapRevenue(actionValues: unknown): number {
   return sumActionsIn(actionValues, PURCHASE_ACTION_TYPES);
 }
 
+// Meta campaign objectives that legitimately produce purchase revenue. Anything
+// else (OUTCOME_LEADS, OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_ENGAGEMENT and
+// their legacy names) must show ROAS "—", so its revenue is forced to 0. This is
+// more robust than guessing from the campaign name — the objective is declared.
+const REVENUE_OBJECTIVE = /(SALES|CONVERSION)/i; // OUTCOME_SALES, PRODUCT_CATALOG_SALES, CONVERSIONS
+export function isRevenueObjective(objective: string | null | undefined): boolean {
+  return !!objective && REVENUE_OBJECTIVE.test(objective);
+}
+
 function normalizeAccountId(adAccountId: string): string {
   return adAccountId.startsWith('act_')
     ? adAccountId
     : `act_${adAccountId.replace(/[^0-9]/g, '')}`;
+}
+
+/** Map of campaign id → objective (e.g. OUTCOME_SALES) for the ad account. */
+export async function fetchCampaignObjectives(
+  accessToken: string,
+  adAccountId: string,
+): Promise<Map<string, string>> {
+  const acct = normalizeAccountId(adAccountId);
+  const out = new Map<string, string>();
+  let url: string | null =
+    `${metaBase()}/${acct}/campaigns?` +
+    new URLSearchParams({
+      fields: 'id,name,objective',
+      limit: '500',
+      access_token: accessToken,
+    }).toString();
+  let guard = 0;
+  while (url && guard < 50) {
+    const json = await graphGet(url);
+    const data = (json.data as Array<Record<string, unknown>>) || [];
+    for (const c of data) {
+      const id = str(c.id);
+      if (id) out.set(id, str(c.objective));
+    }
+    url = nextPage(json);
+    guard++;
+  }
+  return out;
 }
 
 /** Daily campaign insights for [from, to] (yyyy-mm-dd), mapped to metric rows. */
@@ -233,11 +270,22 @@ export async function fetchCampaignInsights(
   to: string,
 ): Promise<SyncedMetricRow[]> {
   const acct = normalizeAccountId(adAccountId);
+
+  // Objective per campaign gates revenue: a non-sales campaign never reports
+  // ROAS from cross-attributed action values. A failure here is non-fatal — we
+  // fall back to the strict purchase allowlist alone.
+  let objectives = new Map<string, string>();
+  try {
+    objectives = await fetchCampaignObjectives(accessToken, adAccountId);
+  } catch {
+    /* fall back to allowlist-only revenue */
+  }
+
   let url: string | null =
     `${metaBase()}/${acct}/insights?` +
     new URLSearchParams({
       level: 'campaign',
-      fields: 'campaign_name,impressions,clicks,spend,actions,action_values,date_start',
+      fields: 'campaign_name,campaign_id,impressions,clicks,spend,actions,action_values,date_start',
       time_increment: '1', // one row per day
       time_range: JSON.stringify({ since: from, until: to }),
       limit: '200',
@@ -252,8 +300,12 @@ export async function fetchCampaignInsights(
     for (const row of data) {
       const campaign = str(row.campaign_name) || '—';
       const date = str(row.date_start) || from;
+      const objective = objectives.get(str(row.campaign_id)) || null;
       const conversions = mapConversions(row.actions);
-      const revenue = mapRevenue(row.action_values); // purchase action_values only
+      // Revenue only counts when the objective is sales/conversions. Otherwise
+      // force 0 so a lead/traffic campaign shows ROAS "—".
+      const revenue =
+        objective && !isRevenueObjective(objective) ? 0 : mapRevenue(row.action_values);
 
       rows.push({
         date,
@@ -265,6 +317,7 @@ export async function fetchCampaignInsights(
         conversions,
         revenue,
         source: 'meta_api',
+        objective,
       });
     }
     url = nextPage(json);

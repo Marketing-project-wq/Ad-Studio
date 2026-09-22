@@ -194,6 +194,7 @@ export interface CampaignMetric {
   conversions: number;
   revenue: number; // conversion value, in IDR (0 when unknown)
   source?: MetricSourceTag; // defaults to 'manual' server-side
+  objective?: string | null; // Meta campaign objective (null for other sources)
   created_at: string;
 }
 

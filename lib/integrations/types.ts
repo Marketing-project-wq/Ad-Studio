@@ -45,6 +45,7 @@ export interface SyncedMetricRow {
   conversions: number;
   revenue: number;
   source: 'google_ads_api' | 'meta_api';
+  objective?: string | null; // Meta campaign objective, e.g. OUTCOME_SALES
 }
 
 /** Raw credentials row as stored in Supabase (tokens are ciphertext). */

@@ -668,7 +668,13 @@ export default function PerformanceReport() {
                         <td className="num ar">{formatNumber(row.revenue, 'currency', lang)}</td>
                         <td
                           className={`num ar roas-${roasTone(k.roas)}`}
-                          title={k.roas === null ? r.roasDashTip : undefined}
+                          title={
+                            k.roas === null
+                              ? row.objective
+                                ? `${r.roasDashTip} · ${row.objective}`
+                                : r.roasDashTip
+                              : undefined
+                          }
                         >
                           {formatNumber(k.roas, 'multiplier', lang)}
                         </td>

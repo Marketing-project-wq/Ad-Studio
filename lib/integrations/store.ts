@@ -208,6 +208,7 @@ export async function upsertSyncedMetrics(
       conversions: r.conversions,
       revenue: r.revenue,
       source: r.source,
+      objective: r.objective ?? null,
     })),
     { onConflict: 'platform,campaign,date,source' },
   );
