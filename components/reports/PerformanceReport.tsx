@@ -232,10 +232,6 @@ export default function PerformanceReport() {
     e.target.value = '';
   }
 
-  async function onSample() {
-    await persist(sampleRows(), r.sampleLoaded);
-  }
-
   async function onDelete(id: string) {
     await deleteMetric(state.source, id);
     setState((s) => ({ ...s, rows: s.rows.filter((x) => x.id !== id) }));
@@ -322,9 +318,6 @@ export default function PerformanceReport() {
           </button>
           <button className="btn btn-glass btn-sm" onClick={() => setShowImport((v) => !v)}>
             {r.importCsv}
-          </button>
-          <button className="btn btn-glass btn-sm" onClick={onSample} disabled={busy}>
-            {r.loadSample}
           </button>
           <button
             className="btn btn-glass btn-sm"
@@ -554,7 +547,8 @@ export default function PerformanceReport() {
             </div>
           </div>
 
-          <div className={platformsWithData >= 2 ? 'report-grid' : ''}>
+          {/* Top 5 + efficiency scatter, side by side on wide screens (>1200px) */}
+          <div className="report-duo">
             <div className="card">
               <div className="slbl">{r.topCampaigns}</div>
               <RankedBars
@@ -570,36 +564,31 @@ export default function PerformanceReport() {
                 format={(n) => formatNumber(n, 'currency', lang)}
               />
             </div>
-            {platformsWithData >= 2 && (
-              <div className="card">
-                <div className="slbl">{r.byPlatform}</div>
-                <BarList items={byPlatform} format={(n) => formatNumber(n, 'currency', lang)} />
-              </div>
-            )}
+            <div className="card">
+              <div className="slbl">{r.efficiencyTitle}</div>
+              <ScatterPlot
+                points={efficiency}
+                lang={lang}
+                labels={{
+                  x: r.scatterX,
+                  y: r.scatterY,
+                  breakEven: r.breakEven,
+                  spend: r.kSpend,
+                  revenue: r.colRevenue,
+                  roas: r.kRoas,
+                  conversions: r.kConv,
+                }}
+                empty={r.perfEmpty}
+              />
+            </div>
           </div>
 
-          {/* Campaign efficiency scatter */}
-          <div className="card">
-            <div className="slbl">{r.efficiencyTitle}</div>
-            <ScatterPlot
-              points={efficiency}
-              lang={lang}
-              labels={{
-                x: r.scatterX,
-                y: r.scatterY,
-                breakEven: r.breakEven,
-                quadScaleUp: r.quadScaleUp,
-                quadPotential: r.quadPotential,
-                quadOptimize: r.quadOptimize,
-                quadReview: r.quadReview,
-                spend: r.kSpend,
-                revenue: r.colRevenue,
-                roas: r.kRoas,
-                conversions: r.kConv,
-              }}
-              empty={r.perfEmpty}
-            />
-          </div>
+          {platformsWithData >= 2 && (
+            <div className="card">
+              <div className="slbl">{r.byPlatform}</div>
+              <BarList items={byPlatform} format={(n) => formatNumber(n, 'currency', lang)} />
+            </div>
+          )}
 
           {/* Table */}
           <div className="report-toolbar" style={{ marginBottom: 8 }}>
@@ -847,35 +836,4 @@ function platformSpend(rows: CampaignMetric[]) {
   return Array.from(map.entries())
     .map(([platform, value]) => ({ platform, value }))
     .sort((a, b) => b.value - a.value);
-}
-
-// Clearly-labeled SAMPLE data so the team can see the report populated.
-// These are illustrative placeholders, NOT real 20FIT campaign numbers.
-function sampleRows(): MetricInput[] {
-  const platforms: MetricPlatform[] = ['meta', 'google_sem', 'google_pmax', 'google_display'];
-  const out: MetricInput[] = [];
-  const start = new Date();
-  start.setDate(start.getDate() - 13);
-  for (let d = 0; d < 14; d++) {
-    const date = new Date(start.getTime() + d * 86400000).toISOString().slice(0, 10);
-    for (const p of platforms) {
-      const base = p === 'meta' ? 5200 : p === 'google_sem' ? 2600 : p === 'google_pmax' ? 3400 : 4100;
-      const impressions = base + ((d * 37 + p.length * 53) % 1800);
-      const clicks = Math.round(impressions * (p === 'google_sem' ? 0.055 : 0.021));
-      const cost = clicks * (p === 'google_sem' ? 3200 : 1800);
-      const conversions = Math.max(0, Math.round(clicks * 0.06));
-      const revenue = conversions * 350000; // illustrative avg order value
-      out.push({
-        date,
-        platform: p,
-        campaign: `contoh_ems_trial_q3_2026_${p}`,
-        impressions,
-        clicks,
-        cost,
-        conversions,
-        revenue,
-      });
-    }
-  }
-  return out;
 }

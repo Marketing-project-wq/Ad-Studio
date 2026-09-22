@@ -1191,6 +1191,18 @@ a {
     grid-template-columns: 1fr;
   }
 }
+/* Two panels side by side only on wide screens; stacked below 1200px. */
+.report-duo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 1200px) {
+  .report-duo {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1648,13 +1660,15 @@ a {
 .scatter-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 700 / 400;
+  max-width: 560px; /* caps rendered height at ~290px while keeping tooltip math exact */
+  margin: 0 auto;
+  aspect-ratio: 520 / 270;
 }
 .scatter-wrap svg {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 .sc-grid {
   stroke: var(--border);
@@ -1674,12 +1688,18 @@ a {
   stroke: var(--ink-soft);
   stroke-width: 1;
   stroke-dasharray: 5 4;
-  opacity: 0.55;
+  opacity: 0.3;
 }
 .sc-be-label {
   fill: var(--ink-soft);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+.sc-point-label {
+  fill: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 9px;
 }
 .sc-tick {
   fill: var(--ink-faint);
@@ -1693,13 +1713,6 @@ a {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-.sc-quad {
-  fill: var(--ink-faint);
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-style: italic;
-  opacity: 0.32;
 }
 .sc-dot {
   opacity: 0.78;

@@ -168,10 +168,6 @@ export interface ScatterLabels {
   x: string;
   y: string;
   breakEven: string;
-  quadScaleUp: string;
-  quadPotential: string;
-  quadOptimize: string;
-  quadReview: string;
   spend: string;
   revenue: string;
   roas: string;
@@ -236,12 +232,13 @@ export function ScatterPlot({
   const [hover, setHover] = useState<number | null>(null);
   if (points.length === 0) return <div className="muted">{empty}</div>;
 
-  const W = 700;
-  const H = 400;
-  const padL = 60;
-  const padR = 20;
-  const padT = 18;
-  const padB = 46;
+  // Compact viewBox; the wrapper caps the rendered height at ~290px.
+  const W = 520;
+  const H = 270;
+  const padL = 44;
+  const padR = 14;
+  const padT = 12;
+  const padB = 34;
   const x0 = padL;
   const x1 = W - padR;
   const y0 = padT;
@@ -259,13 +256,14 @@ export function ScatterPlot({
 
   const sx = (spend: number) => x0 + (spend / xs.max) * plotW;
   const sy = (roas: number) => y1 - (roas / ys.max) * plotH;
-  const radius = (conv: number) => 6 + Math.sqrt(conv / maxConv) * 18; // 6…24, area ~ conv
+  const radius = (conv: number) => 2.5 + Math.sqrt(conv / maxConv) * 6.5; // r 2.5…9 → ⌀ 5…18
 
   const xTicks = Array.from({ length: 5 }, (_, i) => i * xs.step);
   const yTicks = Array.from({ length: 5 }, (_, i) => i * ys.step);
   const medianX = sx(median(points.map((p) => p.spend)));
   const beY = sy(1); // break-even
   const hoverPt = hover !== null ? points[hover] : null;
+  const trunc = (s: string) => (s.length > 15 ? `${s.slice(0, 15)}…` : s);
 
   return (
     <div className="scatter-wrap">
@@ -274,14 +272,14 @@ export function ScatterPlot({
         {yTicks.map((v) => (
           <g key={`y${v}`}>
             <line x1={x0} y1={sy(v)} x2={x1} y2={sy(v)} className="sc-grid" />
-            <text x={x0 - 8} y={sy(v) + 3} textAnchor="end" className="sc-tick">
+            <text x={x0 - 6} y={sy(v) + 3} textAnchor="end" className="sc-tick">
               {trimNum(v)}x
             </text>
           </g>
         ))}
         {/* X ticks */}
         {xTicks.map((v) => (
-          <text key={`x${v}`} x={sx(v)} y={y1 + 16} textAnchor="middle" className="sc-tick">
+          <text key={`x${v}`} x={sx(v)} y={y1 + 13} textAnchor="middle" className="sc-tick">
             {axisMoney(v, lang)}
           </text>
         ))}
@@ -289,55 +287,51 @@ export function ScatterPlot({
         <line x1={x0} y1={y0} x2={x0} y2={y1} className="sc-axis" />
         <line x1={x0} y1={y1} x2={x1} y2={y1} className="sc-axis" />
 
-        {/* median-spend divider + quadrant hints */}
+        {/* subtle median-spend divider + break-even (ROAS = 1) reference lines */}
         <line x1={medianX} y1={y0} x2={medianX} y2={y1} className="sc-ref" />
-        <text x={x0 + 6} y={y0 + 13} className="sc-quad">
-          {labels.quadPotential}
-        </text>
-        <text x={x1 - 6} y={y0 + 13} textAnchor="end" className="sc-quad">
-          {labels.quadScaleUp}
-        </text>
-        <text x={x0 + 6} y={y1 - 7} className="sc-quad">
-          {labels.quadReview}
-        </text>
-        <text x={x1 - 6} y={y1 - 7} textAnchor="end" className="sc-quad">
-          {labels.quadOptimize}
-        </text>
-
-        {/* break-even line at ROAS = 1 */}
         <line x1={x0} y1={beY} x2={x1} y2={beY} className="sc-breakeven" />
-        <text x={x1 - 4} y={beY - 5} textAnchor="end" className="sc-be-label">
+        <text x={x1 - 3} y={beY - 4} textAnchor="end" className="sc-be-label">
           {labels.breakEven}
         </text>
 
         {/* dots */}
-        {points.map((p, i) => {
-          const band = roasBand(p.roas);
-          return (
-            <circle
-              key={p.campaign}
-              cx={sx(p.spend)}
-              cy={sy(p.roas ?? 0)}
-              r={radius(p.conversions)}
-              fill={BAND_COLOR[band]}
-              className={`sc-dot${hover === i ? ' on' : ''}`}
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover((h) => (h === i ? null : h))}
-            >
-              <title>{`${p.campaign} — ${labels.roas} ${formatNumber(p.roas, 'multiplier', lang)}`}</title>
-            </circle>
-          );
-        })}
+        {points.map((p, i) => (
+          <circle
+            key={p.campaign}
+            cx={sx(p.spend)}
+            cy={sy(p.roas ?? 0)}
+            r={radius(p.conversions)}
+            fill={BAND_COLOR[roasBand(p.roas)]}
+            className={`sc-dot${hover === i ? ' on' : ''}`}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover((h) => (h === i ? null : h))}
+          >
+            <title>{`${p.campaign} — ${labels.roas} ${formatNumber(p.roas, 'multiplier', lang)}`}</title>
+          </circle>
+        ))}
+
+        {/* per-dot campaign labels (informational; overlap is fine) */}
+        {points.map((p) => (
+          <text
+            key={`l-${p.campaign}`}
+            x={sx(p.spend) + radius(p.conversions) + 4}
+            y={sy(p.roas ?? 0) + 3}
+            className="sc-point-label"
+            pointerEvents="none"
+          >
+            {trunc(p.campaign)}
+          </text>
+        ))}
 
         {/* axis titles */}
-        <text x={(x0 + x1) / 2} y={H - 6} textAnchor="middle" className="sc-axis-title">
+        <text x={(x0 + x1) / 2} y={H - 4} textAnchor="middle" className="sc-axis-title">
           {labels.x}
         </text>
         <text
-          x={14}
+          x={11}
           y={(y0 + y1) / 2}
           textAnchor="middle"
-          transform={`rotate(-90 14 ${(y0 + y1) / 2})`}
+          transform={`rotate(-90 11 ${(y0 + y1) / 2})`}
           className="sc-axis-title"
         >
           {labels.y}

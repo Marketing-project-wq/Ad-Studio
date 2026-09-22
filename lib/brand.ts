@@ -1,9 +1,16 @@
 import type { Platform } from './types';
 
+// Primary brand marks: the real 20FIT PNGs served from media.20fit.id
+// (color = light backgrounds, white = dark backgrounds).
 export const LOGO_COLOR =
   'https://media.20fit.id/wp-content/uploads/2026/04/20FITcolor.png';
 export const LOGO_WHITE =
   'https://media.20fit.id/wp-content/uploads/2026/05/Copy-of-new-logo-20fit-putih-3.png';
+
+// Committed SVG wordmark fallbacks — shown only if the remote PNG fails to load
+// (offline, blocked, or 404). Served locally from /public so they always resolve.
+export const LOGO_COLOR_FALLBACK = '/brand/20fit-wordmark-color.svg';
+export const LOGO_WHITE_FALLBACK = '/brand/20fit-wordmark-white.svg';
 
 export interface PlatformMeta {
   key: Platform;

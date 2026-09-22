@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/app/providers';
-import { LOGO_COLOR, LOGO_WHITE } from '@/lib/brand';
+import BrandLogo from './BrandLogo';
 
 interface NavItem {
   href: string;
@@ -76,12 +76,7 @@ export default function Sidebar({
   return (
     <aside className={`sidebar${drawer ? ' drawer open' : ''}`}>
       <div className="sb-logo">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={isDark ? LOGO_WHITE : LOGO_COLOR}
-          alt="20FIT"
-          crossOrigin="anonymous"
-        />
+        <BrandLogo isDark={isDark} />
       </div>
 
       {SECTIONS.map((section, i) => (
