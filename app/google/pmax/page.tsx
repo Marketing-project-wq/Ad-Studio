@@ -49,8 +49,8 @@ export default function PmaxPage() {
         buttonLabel={p.button}
         tips={p.tips}
         tipsTitle="Tips Performance Max"
-        renderResult={(data: GenerationOutput) => (
-          <PmaxResult data={data as PmaxOutput} />
+        renderResult={(data, _brief, generationId) => (
+          <PmaxResult data={data as PmaxOutput} trackId={generationId} />
         )}
       />
     </>

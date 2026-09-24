@@ -73,8 +73,8 @@ export default function MetaPage() {
         buttonLabel={m.button}
         tips={m.tips}
         tipsTitle="Tips Meta Ads"
-        renderResult={(data: GenerationOutput, brief) => (
-          <MetaResult data={data as MetaOutput} cta={brief.cta} />
+        renderResult={(data, brief, generationId) => (
+          <MetaResult data={data as MetaOutput} cta={brief.cta} trackId={generationId} />
         )}
       />
     </>

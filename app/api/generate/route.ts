@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCopy, isAIConfigured } from '@/lib/ai';
 import { cacheGet, cacheSet, hashKey, rateLimit } from '@/lib/server-cache';
+import { dbSaveGeneration, isSupabaseServerConfigured } from '@/lib/db/server';
 import type { Brief, GenerationOutput, Lang, Platform } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -74,7 +75,23 @@ export async function POST(req: NextRequest) {
   try {
     const data = await generateCopy(platform, brief, lang);
     cacheSet(cacheKey, data);
-    return NextResponse.json({ data, cached: false });
+
+    // Persist team-wide for the Reports system (best-effort; never blocks).
+    let generationId: string | null = null;
+    if (isSupabaseServerConfigured()) {
+      try {
+        generationId = await dbSaveGeneration({
+          platform,
+          language: lang,
+          inputBrief: brief,
+          outputData: data,
+        });
+      } catch (e) {
+        console.error('Failed to persist generation:', e);
+      }
+    }
+
+    return NextResponse.json({ data, cached: false, generationId });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Generation failed';
     // JSON parse failures or upstream API errors land here.

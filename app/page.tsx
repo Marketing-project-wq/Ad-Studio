@@ -5,8 +5,18 @@ import Link from 'next/link';
 import PageHeader from '@/components/layout/PageHeader';
 import { useApp } from '@/app/providers';
 import { getStats, listGenerations } from '@/lib/history';
+import { fetchServerHistory } from '@/lib/db/generations';
+import { fetchDashboardStats } from '@/lib/db/reports';
 import { PLATFORM_META } from '@/lib/brand';
 import { PLATFORM_LABELS, type AdGeneration, type Platform } from '@/lib/types';
+
+function uniqueProducts(rows: AdGeneration[]): number {
+  return new Set(
+    rows
+      .map((g) => (g.input_brief as { product?: string }).product?.trim().toLowerCase())
+      .filter(Boolean),
+  ).size;
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -28,15 +38,35 @@ export default function DashboardPage() {
   const [assetCount, setAssetCount] = useState<number | null>(null);
 
   useEffect(() => {
-    setGens(listGenerations());
-    setStats(getStats());
+    let active = true;
+    (async () => {
+      // Prefer team-wide server data when Supabase is configured; else local.
+      const server = await fetchServerHistory({ limit: 100 }).catch(() => null);
+      if (!active) return;
+      if (server) {
+        setGens(server as AdGeneration[]);
+        const ds = await fetchDashboardStats().catch(() => null);
+        if (!active) return;
+        setStats({
+          totalGenerated: ds?.total_generations ?? server.length,
+          activeCampaigns: uniqueProducts(server as AdGeneration[]),
+          utmLinks: ds?.total_utm ?? 0,
+        });
+      } else {
+        setGens(listGenerations());
+        setStats(getStats());
+      }
+    })();
     // Asset count from Supabase (if configured); ignore errors.
     fetch('/api/assets')
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (j?.assets) setAssetCount(j.assets.length);
+        if (j?.assets && active) setAssetCount(j.assets.length);
       })
       .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const platformCount = (p: Platform) =>

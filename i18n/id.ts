@@ -37,6 +37,7 @@ const id = {
     banner: 'Banner Maker',
     assets: 'Asset Library',
     history: 'History',
+    reports: 'Reports',
     settings: 'Settings',
   },
   dashboard: {
@@ -173,6 +174,8 @@ const id = {
     colDate: 'Tanggal',
     localNote:
       'Riwayat disimpan di browser ini. Aktifkan Supabase untuk sinkronisasi lintas perangkat.',
+    cloudNote: 'Tersinkron ke Supabase — riwayat dibagikan seluruh tim.',
+    favorite: 'Favorit',
   },
   settings: {
     title: 'Settings',
@@ -187,6 +190,32 @@ const id = {
     about: 'Tentang',
     aboutText:
       '20FIT Ad Studio v1.0 — internal tool untuk tim digital marketing. Dibangun dengan Next.js, Supabase, dan Claude API.',
+  },
+  reports: {
+    title: 'Reports',
+    subtitle: 'Analisis produktivitas dan kualitas output Ad Studio (data tim)',
+    tabProductivity: 'Produktivitas',
+    tabQuality: 'Quality',
+    tabContent: 'Content Insights',
+    totalGenerations: 'Total Generations',
+    hoursSaved: 'Waktu Hemat',
+    avgPerWeek: 'Rata-rata/Minggu',
+    weeklyGeneration: 'Generation per Minggu',
+    timeSavedTrend: 'Tren Waktu Hemat',
+    overallCompliance: 'Overall Compliance',
+    charLimitCompliance: 'Kepatuhan batas karakter',
+    complianceByPlatform: 'Compliance per Platform',
+    worstField: 'Field Paling Sering Over',
+    generations: 'Generations',
+    languageSplit: 'Split Bahasa',
+    platformDistribution: 'Distribusi Platform',
+    topProducts: 'Produk Paling Sering',
+    favorites: 'Favorit',
+    copyEngagement: 'Copy Engagement',
+    generationsWithCopies: 'generation dengan field di-copy',
+    noData: 'Belum ada data untuk periode ini',
+    supabaseNeeded:
+      'Reports butuh Supabase. Set NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY, lalu jalankan migrasi SQL.',
   },
 };
 

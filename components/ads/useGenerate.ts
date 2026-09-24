@@ -9,6 +9,7 @@ interface GenState {
   loading: boolean;
   error: string | null;
   data: GenerationOutput | null;
+  generationId: string | null;
 }
 
 export function useGenerate(platform: Platform) {
@@ -17,10 +18,11 @@ export function useGenerate(platform: Platform) {
     loading: false,
     error: null,
     data: null,
+    generationId: null,
   });
 
   async function run(brief: Brief) {
-    setState({ loading: true, error: null, data: null });
+    setState({ loading: true, error: null, data: null, generationId: null });
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
@@ -32,7 +34,12 @@ export function useGenerate(platform: Platform) {
         throw new Error(json?.error || `Request failed (${res.status})`);
       }
       const data = json.data as GenerationOutput;
-      setState({ loading: false, error: null, data });
+      setState({
+        loading: false,
+        error: null,
+        data,
+        generationId: (json.generationId as string) || null,
+      });
       try {
         saveGeneration({
           platform,
@@ -48,6 +55,7 @@ export function useGenerate(platform: Platform) {
         loading: false,
         error: err instanceof Error ? err.message : 'Unknown error',
         data: null,
+        generationId: null,
       });
     }
   }

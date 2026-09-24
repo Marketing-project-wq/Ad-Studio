@@ -39,7 +39,13 @@ const INTENT_COLOR: Record<string, string> = {
   low: 'var(--ink-faint)',
 };
 
-export function DisplayResult({ data }: { data: DisplayOutput }) {
+export function DisplayResult({
+  data,
+  trackId,
+}: {
+  data: DisplayOutput;
+  trackId?: string | null;
+}) {
   return (
     <div>
       <div className="slbl" style={{ fontSize: 14, marginBottom: 12 }}>
@@ -67,7 +73,7 @@ export function DisplayResult({ data }: { data: DisplayOutput }) {
             </div>
             <div className="card hover-red">
               <div className="cact">
-                <CopyButton text={copyText} />
+                <CopyButton text={copyText} trackId={trackId} field={`display_v${i + 1}`} />
               </div>
               <div className="slbl">Short Headlines (30)</div>
               {v.short_headlines.map((x, j) => (
@@ -96,7 +102,13 @@ export function DisplayResult({ data }: { data: DisplayOutput }) {
   );
 }
 
-export function SemResult({ data }: { data: SemOutput }) {
+export function SemResult({
+  data,
+  trackId,
+}: {
+  data: SemOutput;
+  trackId?: string | null;
+}) {
   return (
     <div>
       <div className="slbl" style={{ fontSize: 14, marginBottom: 12 }}>
@@ -134,7 +146,7 @@ export function SemResult({ data }: { data: SemOutput }) {
             </div>
             <div className="card hover-red">
               <div className="cact">
-                <CopyButton text={copyText} />
+                <CopyButton text={copyText} trackId={trackId} field={`sem_ag${i + 1}`} />
               </div>
               <div className="slbl">Keywords</div>
               <div className="tag-wrap">
@@ -194,7 +206,13 @@ export function SemResult({ data }: { data: SemOutput }) {
   );
 }
 
-export function PmaxResult({ data }: { data: PmaxOutput }) {
+export function PmaxResult({
+  data,
+  trackId,
+}: {
+  data: PmaxOutput;
+  trackId?: string | null;
+}) {
   return (
     <div>
       <div className="slbl" style={{ fontSize: 14, marginBottom: 12 }}>
@@ -224,7 +242,7 @@ export function PmaxResult({ data }: { data: PmaxOutput }) {
             </div>
             <div className="card hover-red">
               <div className="cact">
-                <CopyButton text={copyText} />
+                <CopyButton text={copyText} trackId={trackId} field={`pmax_ag${i + 1}`} />
               </div>
               <div className="slbl">Headlines (30)</div>
               {ag.headlines.map((x, j) => (
@@ -304,9 +322,11 @@ export function PmaxResult({ data }: { data: PmaxOutput }) {
 export function MetaResult({
   data,
   cta,
+  trackId,
 }: {
   data: MetaOutput;
   cta: string;
+  trackId?: string | null;
 }) {
   return (
     <div>
@@ -367,7 +387,7 @@ export function MetaResult({
               </div>
             </div>
             <div className="row" style={{ flexWrap: 'wrap' }}>
-              <CopyButton text={copyText} label="Copy" />
+              <CopyButton text={copyText} label="Copy" trackId={trackId} field={`meta_v${i + 1}`} />
               {vr.story_text && (
                 <span style={{ fontSize: 11, color: 'var(--ink-faint)' }}>
                   Stories:{' '}

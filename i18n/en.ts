@@ -39,6 +39,7 @@ const en: Dictionary = {
     banner: 'Banner Maker',
     assets: 'Asset Library',
     history: 'History',
+    reports: 'Reports',
     settings: 'Settings',
   },
   dashboard: {
@@ -175,6 +176,8 @@ const en: Dictionary = {
     colDate: 'Date',
     localNote:
       'History is stored in this browser. Enable Supabase for cross-device sync.',
+    cloudNote: 'Synced to Supabase — history is shared across the team.',
+    favorite: 'Favorite',
   },
   settings: {
     title: 'Settings',
@@ -189,6 +192,32 @@ const en: Dictionary = {
     about: 'About',
     aboutText:
       '20FIT Ad Studio v1.0 — internal tool for the digital marketing team. Built with Next.js, Supabase, and the Claude API.',
+  },
+  reports: {
+    title: 'Reports',
+    subtitle: 'Analyze productivity and output quality across the team',
+    tabProductivity: 'Productivity',
+    tabQuality: 'Quality',
+    tabContent: 'Content Insights',
+    totalGenerations: 'Total Generations',
+    hoursSaved: 'Hours Saved',
+    avgPerWeek: 'Avg per Week',
+    weeklyGeneration: 'Weekly Generation',
+    timeSavedTrend: 'Time Saved Trend',
+    overallCompliance: 'Overall Compliance',
+    charLimitCompliance: 'Character limit compliance',
+    complianceByPlatform: 'Compliance by Platform',
+    worstField: 'Most Over-limit Field',
+    generations: 'Generations',
+    languageSplit: 'Language Split',
+    platformDistribution: 'Platform Distribution',
+    topProducts: 'Most Used Products',
+    favorites: 'Favorites',
+    copyEngagement: 'Copy Engagement',
+    generationsWithCopies: 'generations with copied fields',
+    noData: 'No data for this period yet',
+    supabaseNeeded:
+      'Reports need Supabase. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then run the SQL migration.',
   },
 };
 

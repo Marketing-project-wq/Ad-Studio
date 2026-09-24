@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '@/app/providers';
 import { buildUtmUrl, slugifyCampaign, UTM_MEDIUMS, UTM_SOURCES } from '@/lib/utm';
 import { saveUtmLink } from '@/lib/history';
+import { saveUtm } from '@/lib/db/generations';
 import CopyButton from '@/components/ads/CopyButton';
 
 export default function UtmBuilder() {
@@ -163,6 +164,16 @@ export default function UtmBuilder() {
               type="button"
               onClick={() => {
                 saveUtmLink(fullUrl, campaign);
+                // Best-effort team-wide persist (no-op if Supabase is off).
+                saveUtm({
+                  baseUrl: url,
+                  utmSource: effSource,
+                  utmMedium: effMedium,
+                  utmCampaign: campaign,
+                  utmTerm: term,
+                  utmContent: content,
+                  fullUrl,
+                }).catch(() => {});
                 toast(u.saveLink);
               }}
             >

@@ -61,8 +61,8 @@ export default function SemPage() {
         buttonLabel={s.button}
         tips={s.tips}
         tipsTitle="Tips Search Ads"
-        renderResult={(data: GenerationOutput) => (
-          <SemResult data={data as SemOutput} />
+        renderResult={(data, _brief, generationId) => (
+          <SemResult data={data as SemOutput} trackId={generationId} />
         )}
       />
     </>

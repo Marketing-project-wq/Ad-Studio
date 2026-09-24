@@ -48,8 +48,8 @@ export default function DisplayPage() {
         buttonLabel={d.button}
         tips={d.tips}
         tipsTitle="Tips Display Ads"
-        renderResult={(data: GenerationOutput) => (
-          <DisplayResult data={data as DisplayOutput} />
+        renderResult={(data, _brief, generationId) => (
+          <DisplayResult data={data as DisplayOutput} trackId={generationId} />
         )}
       />
     </>

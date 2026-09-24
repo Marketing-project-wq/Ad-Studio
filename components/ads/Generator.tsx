@@ -28,7 +28,11 @@ export default function Generator({
   buttonLabel: string;
   tips: string;
   tipsTitle?: string;
-  renderResult: (data: GenerationOutput, brief: Record<string, string>) => ReactNode;
+  renderResult: (
+    data: GenerationOutput,
+    brief: Record<string, string>,
+    generationId: string | null,
+  ) => ReactNode;
 }) {
   const { t } = useApp();
   const initial = useMemo(() => {
@@ -41,7 +45,7 @@ export default function Generator({
   }, [fields]);
 
   const [brief, setBrief] = useState<Record<string, string>>(initial);
-  const { loading, error, data, run } = useGenerate(platform);
+  const { loading, error, data, generationId, run } = useGenerate(platform);
 
   const setField = (id: string, value: string) =>
     setBrief((prev) => ({ ...prev, [id]: value }));
@@ -110,7 +114,10 @@ export default function Generator({
             </p>
           </div>
         )}
-        {!loading && !error && data && (renderResult(data, brief) as ReactNode)}
+        {!loading &&
+          !error &&
+          data &&
+          (renderResult(data, brief, generationId) as ReactNode)}
         {!loading && !error && !data && (
           <div className="es">
             <div className="es-ico">✦</div>

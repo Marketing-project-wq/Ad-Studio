@@ -47,6 +47,7 @@ const SECTIONS: NavSection[] = [
     sectionKey: 'library',
     items: [
       { href: '/assets', labelKey: 'assets', dot: 'var(--green)' },
+      { href: '/reports', labelKey: 'reports', dot: 'var(--blue)' },
       { href: '/history', labelKey: 'history', dot: 'var(--ink-faint)' },
       { href: '/settings', labelKey: 'settings', dot: 'var(--ink-faint)' },
     ],
